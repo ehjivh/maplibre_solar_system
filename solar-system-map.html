@@ -514,6 +514,56 @@
 			}
 		};
 
+		// ========== 到達時間の計算 ==========
+		function calculateTravelTime(distanceKm) {
+			const LIGHT_SPEED_KM_S = 299792.458; // 光速 km/s
+			const SHINKANSEN_KM_H = 300; // 新幹線 km/h
+			const WALKING_KM_H = 4; // 徒歩 km/h
+
+			// 光速での時間
+			const lightSeconds = distanceKm / LIGHT_SPEED_KM_S;
+			let lightTime = '';
+			if (lightSeconds < 60) {
+				lightTime = `${lightSeconds.toFixed(2)}秒`;
+			} else if (lightSeconds < 3600) {
+				lightTime = `${(lightSeconds / 60).toFixed(2)}分`;
+			} else if (lightSeconds < 86400) {
+				lightTime = `${(lightSeconds / 3600).toFixed(2)}時間`;
+			} else if (lightSeconds < 31536000) {
+				lightTime = `${(lightSeconds / 86400).toFixed(2)}日`;
+			} else {
+				lightTime = `${(lightSeconds / 31536000).toFixed(2)}年`;
+			}
+
+			// 新幹線での時間
+			const shinkansenHours = distanceKm / SHINKANSEN_KM_H;
+			let shinkansenTime = '';
+			if (shinkansenHours < 24) {
+				shinkansenTime = `${shinkansenHours.toFixed(1)}時間`;
+			} else if (shinkansenHours < 8760) {
+				shinkansenTime = `${(shinkansenHours / 24).toFixed(1)}日`;
+			} else {
+				shinkansenTime = `${(shinkansenHours / 8760).toFixed(1)}年`;
+			}
+
+			// 徒歩での時間
+			const walkingHours = distanceKm / WALKING_KM_H;
+			let walkingTime = '';
+			if (walkingHours < 24) {
+				walkingTime = `${walkingHours.toFixed(1)}時間`;
+			} else if (walkingHours < 8760) {
+				walkingTime = `${(walkingHours / 24).toFixed(1)}日`;
+			} else {
+				walkingTime = `${(walkingHours / 8760).toFixed(1)}年`;
+			}
+
+			return {
+				light: lightTime,
+				shinkansen: shinkansenTime,
+				walking: walkingTime
+			};
+		}
+
 		// ========== 初期化 ==========
 		function init() {
 			// 地図の初期化
@@ -742,6 +792,54 @@
 					paint: layerPaint
 				});
 
+				// 軌道線のクリックイベント
+				map.on('click', orbitLayerId, (e) => {
+					const coordinates = e.lngLat;
+					const distanceKm = planet.orbitAU * AU_IN_KM;
+					const travelTime = calculateTravelTime(distanceKm);
+
+					const popupContent = `
+						<div style="font-family: 'Segoe UI', sans-serif; min-width: 250px;">
+							<h3 style="margin: 0 0 10px 0; color: ${planet.color}; font-size: 16px;">
+								${planet.name}
+							</h3>
+							<div style="font-size: 13px; line-height: 1.6;">
+								<p style="margin: 5px 0;"><strong>軌道半径:</strong> ${planet.orbitAU.toFixed(2)} AU</p>
+								<p style="margin: 5px 0;"><strong>実際の距離:</strong> ${(distanceKm / 100000000).toFixed(2)} 億km</p>
+								<hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
+								<p style="margin: 5px 0; font-weight: bold; color: #333;">🚀 到達時間:</p>
+								<p style="margin: 3px 0 3px 15px;">💡 光速: <strong>${travelTime.light}</strong></p>
+								<p style="margin: 3px 0 3px 15px;">🚄 新幹線: <strong>${travelTime.shinkansen}</strong></p>
+								<p style="margin: 3px 0 3px 15px;">🚶 徒歩: <strong>${travelTime.walking}</strong></p>
+								<hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
+								<p style="margin: 5px 0;">
+									<a href="https://www.google.com/maps?q=${coordinates.lat},${coordinates.lng}" 
+									   target="_blank" 
+									   style="color: #4CAF50; text-decoration: none;">
+										📍 Google Mapsでこの場所を見る
+									</a>
+								</p>
+							</div>
+						</div>
+					`;
+
+					new maplibregl.Popup({
+						maxWidth: '350px'
+					})
+						.setLngLat(coordinates)
+						.setHTML(popupContent)
+						.addTo(map);
+				});
+
+				// マウスカーソルをポインターに変更
+				map.on('mouseenter', orbitLayerId, () => {
+					map.getCanvas().style.cursor = 'pointer';
+				});
+
+				map.on('mouseleave', orbitLayerId, () => {
+					map.getCanvas().style.cursor = '';
+				});
+
 				// 惑星のソースとレイヤーを追加（塗りつぶし円として描画）
 				// 領域や恒星（直径0）は惑星本体を描画しない
 				if (planet.diameterKm > 0) {
@@ -758,6 +856,55 @@
 							'fill-color': planet.color,
 							'fill-opacity': 0.8
 						}
+					});
+
+					// 惑星本体のクリックイベント
+					map.on('click', planetLayerId, (e) => {
+						const coordinates = e.lngLat;
+						const distanceKm = planet.orbitAU * AU_IN_KM;
+						const travelTime = calculateTravelTime(distanceKm);
+
+						const popupContent = `
+							<div style="font-family: 'Segoe UI', sans-serif; min-width: 250px;">
+								<h3 style="margin: 0 0 10px 0; color: ${planet.color}; font-size: 16px;">
+									${planet.name}
+								</h3>
+								<div style="font-size: 13px; line-height: 1.6;">
+									<p style="margin: 5px 0;"><strong>実際の直径:</strong> ${planet.diameterKm.toLocaleString()} km</p>
+									<p style="margin: 5px 0;"><strong>軌道半径:</strong> ${planet.orbitAU.toFixed(2)} AU</p>
+									<p style="margin: 5px 0;"><strong>太陽からの距離:</strong> ${(distanceKm / 100000000).toFixed(2)} 億km</p>
+									<hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
+									<p style="margin: 5px 0; font-weight: bold; color: #333;">🚀 太陽からの到達時間:</p>
+									<p style="margin: 3px 0 3px 15px;">💡 光速: <strong>${travelTime.light}</strong></p>
+									<p style="margin: 3px 0 3px 15px;">🚄 新幹線: <strong>${travelTime.shinkansen}</strong></p>
+									<p style="margin: 3px 0 3px 15px;">🚶 徒歩: <strong>${travelTime.walking}</strong></p>
+									<hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
+									<p style="margin: 5px 0;">
+										<a href="https://www.google.com/maps?q=${coordinates.lat},${coordinates.lng}" 
+										   target="_blank" 
+										   style="color: #4CAF50; text-decoration: none;">
+											📍 Google Mapsでこの場所を見る
+										</a>
+									</p>
+								</div>
+							</div>
+						`;
+
+						new maplibregl.Popup({
+							maxWidth: '350px'
+						})
+							.setLngLat(coordinates)
+							.setHTML(popupContent)
+							.addTo(map);
+					});
+
+					// マウスカーソルをポインターに変更
+					map.on('mouseenter', planetLayerId, () => {
+						map.getCanvas().style.cursor = 'pointer';
+					});
+
+					map.on('mouseleave', planetLayerId, () => {
+						map.getCanvas().style.cursor = '';
 					});
 				}
 
