@@ -93,6 +93,13 @@
 			margin-bottom: 15px;
 		}
 
+		.map-selector label {
+			display: block;
+			margin-bottom: 5px;
+			font-size: 14px;
+			color: #555;
+		}
+
 		.map-selector select {
 			width: 100%;
 			padding: 8px;
@@ -144,104 +151,218 @@
 			color: #666;
 			margin-top: 10px;
 		}
+
+		.out-of-range {
+			position: absolute;
+			top: 20px;
+			right: 20px;
+			background: white;
+			padding: 15px;
+			border-radius: 8px;
+			box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+			z-index: 1000;
+			max-width: 300px;
+		}
+
+		.out-of-range h3 {
+			margin-bottom: 10px;
+			font-size: 14px;
+			color: #333;
+		}
+
+		.out-of-range-item {
+			font-size: 12px;
+			color: #666;
+			margin-bottom: 5px;
+			padding: 5px;
+			border-left: 3px solid;
+			padding-left: 8px;
+		}
+
+		.out-of-range-empty {
+			font-size: 12px;
+			color: #999;
+			font-style: italic;
+		}
+
+		.panel-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: 10px;
+		}
+
+		.panel-header h2,
+		.panel-header h3 {
+			margin-bottom: 0;
+		}
+
+		.toggle-btn {
+			background: none;
+			border: none;
+			font-size: 18px;
+			cursor: pointer;
+			padding: 5px;
+			color: #666;
+			transition: color 0.3s;
+		}
+
+		.toggle-btn:hover {
+			color: #333;
+		}
+
+		.panel-content {
+			transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+			overflow: hidden;
+		}
+
+		.panel-content.collapsed {
+			max-height: 0 !important;
+			opacity: 0;
+			margin: 0;
+			padding: 0;
+		}
+
+		.fullscreen-btn {
+			position: absolute;
+			bottom: 30px;
+			left: 20px;
+			background: white;
+			border: none;
+			border-radius: 4px;
+			padding: 10px 15px;
+			font-size: 20px;
+			cursor: pointer;
+			box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+			z-index: 1000;
+			transition: background-color 0.3s;
+		}
+
+		.fullscreen-btn:hover {
+			background-color: #f0f0f0;
+		}
 	</style>
 </head>
 
 <body>
 	<div id="map"></div>
 
+	<button class="fullscreen-btn" onclick="toggleFullscreen()" title="全画面モード">⛶</button>
+
 	<div class="control-panel">
-		<h2>🌍 太陽系縮尺シミュレーター</h2>
-
-		<div class="map-selector">
-			<label for="mapStyle">背景地図:</label>
-			<select id="mapStyle" onchange="changeMapStyle()">
-				<option value="osm">OpenStreetMap</option>
-				<option value="gsi-std">地理院地図(標準)</option>
-				<option value="gsi-pale">地理院地図(淡色)</option>
-				<option value="gsi-blank">地理院地図(白地図)</option>
-				<option value="gsi-photo">地理院地図(衛星写真)</option>
-			</select>
+		<div class="panel-header">
+			<h2>🌍 太陽系縮尺シミュレーター</h2>
+			<button class="toggle-btn" onclick="togglePanel('controlContent')" title="パネルを折りたたむ">▼</button>
 		</div>
 
-		<div class="input-group">
-			<label for="earthDiameter">地球の直径 (cm):</label>
-			<input type="number" id="earthDiameter" value="1.3" step="0.1" min="0.1">
+		<div id="controlContent" class="panel-content">
+			<div class="map-selector">
+				<label for="mapStyle">背景地図:</label>
+				<select id="mapStyle" onchange="changeMapStyle()">
+					<option value="osm">OpenStreetMap</option>
+					<option value="gsi-std">地理院地図(標準)</option>
+					<option value="gsi-pale">地理院地図(淡色)</option>
+					<option value="gsi-blank">地理院地図(白地図)</option>
+					<option value="gsi-photo">地理院地図(衛星写真)</option>
+				</select>
+			</div>
+
+			<div class="input-group">
+				<label for="earthDiameter">地球の直径 (cm):</label>
+				<input type="number" id="earthDiameter" value="1.3" step="0.1" min="0.1">
+			</div>
+
+			<div class="input-group">
+				<label for="sunDiameter">太陽の直径 (m):</label>
+				<input type="number" id="sunDiameter" step="0.1" min="0.1">
+			</div>
+
+			<button class="update-btn" onclick="updateOrbits()">描画更新</button>
+
+			<div class="info-text">
+				ℹ️ 太陽マーカーをドラッグして位置を変更できます
+			</div>
 		</div>
+	</div>
 
-		<div class="input-group">
-			<label for="sunDiameter">太陽の直径 (m):</label>
-			<input type="number" id="sunDiameter" step="0.1" min="0.1">
+	<div class="out-of-range" id="outOfRange">
+		<div class="panel-header">
+			<h3>📏 描画範囲外の天体</h3>
+			<button class="toggle-btn" onclick="togglePanel('outOfRangeContent')" title="パネルを折りたたむ">▼</button>
 		</div>
-
-		<button class="update-btn" onclick="updateOrbits()">描画更新</button>
-
-		<div class="info-text">
-			ℹ️ 太陽マーカーをドラッグして位置を変更できます
+		<div id="outOfRangeContent" class="panel-content">
+			<div id="outOfRangeList">
+				<div class="out-of-range-empty">情報なし</div>
+			</div>
 		</div>
 	</div>
 
 	<div class="legend">
-		<h3>天体・領域</h3>
-		<div class="legend-item">
-			<div class="legend-color" style="background-color: #A0A0A0;"></div>
-			<span>水星 (0.39 AU)</span>
+		<div class="panel-header">
+			<h3>天体・領域</h3>
+			<button class="toggle-btn" onclick="togglePanel('legendContent')" title="パネルを折りたたむ">▼</button>
 		</div>
-		<div class="legend-item">
-			<div class="legend-color" style="background-color: #FFA500;"></div>
-			<span>金星 (0.72 AU)</span>
-		</div>
-		<div class="legend-item">
-			<div class="legend-color" style="background-color: #4169E1;"></div>
-			<span>地球 (1.00 AU)</span>
-		</div>
-		<div class="legend-item">
-			<div class="legend-color" style="background-color: #DC143C;"></div>
-			<span>火星 (1.52 AU)</span>
-		</div>
-		<div class="legend-item">
-			<div class="legend-color" style="background-color: #DAA520;"></div>
-			<span>木星 (5.20 AU)</span>
-		</div>
-		<div class="legend-item">
-			<div class="legend-color" style="background-color: #F4A460;"></div>
-			<span>土星 (9.58 AU)</span>
-		</div>
-		<div class="legend-item">
-			<div class="legend-color" style="background-color: #40E0D0;"></div>
-			<span>天王星 (19.22 AU)</span>
-		</div>
-		<div class="legend-item">
-			<div class="legend-color" style="background-color: #1E90FF;"></div>
-			<span>海王星 (30.05 AU)</span>
-		</div>
-		<div class="legend-item">
-			<div class="legend-color" style="background-color: #8B7355;"></div>
-			<span>冥王星 (39.48 AU)</span>
-		</div>
-		<div class="legend-item">
-			<div class="legend-color" style="background-color: #696969;"></div>
-			<span>カイパーベルト (50 AU)</span>
-		</div>
-		<div class="legend-item">
-			<div class="legend-color" style="background-color: #2F4F4F;"></div>
-			<span>オールトの雲内縁 (2,000 AU)</span>
-		</div>
-		<div class="legend-item">
-			<div class="legend-color" style="background-color: #1C1C1C;"></div>
-			<span>オールトの雲外縁 (100,000 AU)</span>
-		</div>
-		<div class="legend-item">
-			<div class="legend-color" style="background-color: #FF6347;"></div>
-			<span>プロキシマ・ケンタウリ (268,770 AU)</span>
-		</div>
-		<div class="legend-item">
-			<div class="legend-color" style="background-color: #87CEEB;"></div>
-			<span>シリウス (542,520 AU)</span>
-		</div>
-		<div class="legend-item">
-			<div class="legend-color" style="background-color: #E0FFFF;"></div>
-			<span>ベガ (1,625,000 AU)</span>
+		<div id="legendContent" class="panel-content">
+			<div class="legend-item">
+				<div class="legend-color" style="background-color: #A0A0A0;"></div>
+				<span>水星 (0.39 AU)</span>
+			</div>
+			<div class="legend-item">
+				<div class="legend-color" style="background-color: #FFA500;"></div>
+				<span>金星 (0.72 AU)</span>
+			</div>
+			<div class="legend-item">
+				<div class="legend-color" style="background-color: #4169E1;"></div>
+				<span>地球 (1.00 AU)</span>
+			</div>
+			<div class="legend-item">
+				<div class="legend-color" style="background-color: #DC143C;"></div>
+				<span>火星 (1.52 AU)</span>
+			</div>
+			<div class="legend-item">
+				<div class="legend-color" style="background-color: #DAA520;"></div>
+				<span>木星 (5.20 AU)</span>
+			</div>
+			<div class="legend-item">
+				<div class="legend-color" style="background-color: #F4A460;"></div>
+				<span>土星 (9.58 AU)</span>
+			</div>
+			<div class="legend-item">
+				<div class="legend-color" style="background-color: #40E0D0;"></div>
+				<span>天王星 (19.22 AU)</span>
+			</div>
+			<div class="legend-item">
+				<div class="legend-color" style="background-color: #1E90FF;"></div>
+				<span>海王星 (30.05 AU)</span>
+			</div>
+			<div class="legend-item">
+				<div class="legend-color" style="background-color: #8B7355;"></div>
+				<span>冥王星 (39.48 AU)</span>
+			</div>
+			<div class="legend-item">
+				<div class="legend-color" style="background-color: #696969;"></div>
+				<span>カイパーベルト (50 AU)</span>
+			</div>
+			<div class="legend-item">
+				<div class="legend-color" style="background-color: #2F4F4F;"></div>
+				<span>オールトの雲内縁 (2,000 AU)</span>
+			</div>
+			<div class="legend-item">
+				<div class="legend-color" style="background-color: #1C1C1C;"></div>
+				<span>オールトの雲外縁 (100,000 AU)</span>
+			</div>
+			<div class="legend-item">
+				<div class="legend-color" style="background-color: #FF6347;"></div>
+				<span>プロキシマ・ケンタウリ (268,770 AU)</span>
+			</div>
+			<div class="legend-item">
+				<div class="legend-color" style="background-color: #87CEEB;"></div>
+				<span>シリウス (542,520 AU)</span>
+			</div>
+			<div class="legend-item">
+				<div class="legend-color" style="background-color: #E0FFFF;"></div>
+				<span>ベガ (1,625,000 AU)</span>
+			</div>
 		</div>
 	</div>
 
@@ -512,6 +633,9 @@
 			console.log(`縮尺: 地球 ${earthDiameterCm} cm`);
 			console.log(`1AU = ${oneAUInMeters.toFixed(2)} m`);
 
+			// 範囲外の天体リストをクリア
+			window.outOfRangePlanets = [];
+
 			// 既存の軌道レイヤーとソースを削除
 			PLANETS.forEach(planet => {
 				const orbitLayerId = `orbit-${planet.name}`;
@@ -549,9 +673,21 @@
 				// 軌道半径をキロメートルに変換（Turf.jsはkmを使用）
 				const orbitRadiusKm = orbitRadiusMeters / 1000;
 
-				// 軌道半径が20,000kmを超える場合はスキップ
+				// 軌道半径が20,000kmを超える場合はスキップし、情報を記録
 				if (orbitRadiusKm > 20000) {
-					console.log(`${planet.name}: 軌道 ${orbitRadiusKm.toFixed(2)} km - 表示範囲外のためスキップ`);
+					// 地球の円周（赤道周囲）: 約40,075km
+					const earthCircumference = 40075;
+					const timesAroundEarth = orbitRadiusKm / earthCircumference;
+					console.log(`${planet.name}: 軌道 ${orbitRadiusKm.toFixed(2)} km (地球${timesAroundEarth.toFixed(2)}周分) - 表示範囲外のためスキップ`);
+
+					// 範囲外の天体情報を保存
+					window.outOfRangePlanets.push({
+						name: planet.name,
+						color: planet.color,
+						distanceKm: orbitRadiusKm,
+						timesAroundEarth: timesAroundEarth
+					});
+
 					return;
 				}
 
@@ -662,6 +798,30 @@
 
 				console.log(`${planet.name}: 軌道 ${orbitRadiusMeters.toFixed(2)} m, 直径 ${planetDiameterMeters.toFixed(4)} m`);
 			});
+
+			// 範囲外の天体リストを更新
+			updateOutOfRangeList();
+		}
+
+		// ========== 描画範囲外の天体リストを更新 ==========
+		function updateOutOfRangeList() {
+			const listElement = document.getElementById('outOfRangeList');
+
+			if (!window.outOfRangePlanets || window.outOfRangePlanets.length === 0) {
+				listElement.innerHTML = '<div class="out-of-range-empty">すべての天体が表示範囲内です</div>';
+				return;
+			}
+
+			let html = '';
+			window.outOfRangePlanets.forEach(planet => {
+				html += `<div class="out-of-range-item" style="border-left-color: ${planet.color};">`;
+				html += `<strong>${planet.name}</strong><br>`;
+				html += `距離: ${planet.distanceKm.toLocaleString('ja-JP', { maximumFractionDigits: 0 })} km<br>`;
+				html += `地球 <strong>${planet.timesAroundEarth.toFixed(1)}</strong> 周分`;
+				html += `</div>`;
+			});
+
+			listElement.innerHTML = html;
 		}
 
 		// ========== 地図スタイル切り替え ==========
@@ -713,8 +873,63 @@
 			});
 		}
 
-		// ========== ページ読み込み時に初期化 ==========
-		window.addEventListener('load', init);
+		// ========== 全画面モード切り替え ==========
+		function toggleFullscreen() {
+			if (!document.fullscreenElement) {
+				// 全画面モードに入る
+				document.documentElement.requestFullscreen().catch(err => {
+					alert(`全画面モードに切り替えできませんでした: ${err.message}`);
+				});
+			} else {
+				// 全画面モードを終了
+				if (document.exitFullscreen) {
+					document.exitFullscreen();
+				}
+			}
+		}
+
+		// 全画面モードの変化を監視してボタンアイコンを更新
+		document.addEventListener('fullscreenchange', () => {
+			const btn = document.querySelector('.fullscreen-btn');
+			if (document.fullscreenElement) {
+				btn.textContent = '❌'; // 全画面中は終了アイコン
+				btn.title = '全画面モードを終了';
+			} else {
+				btn.textContent = '⛶'; // 通常時は全画面アイコン
+				btn.title = '全画面モード';
+			}
+		});
+
+		// ========== パネルの折りたたみ ==========
+		function togglePanel(contentId) {
+			const content = document.getElementById(contentId);
+			const button = event.target;
+
+			if (content.classList.contains('collapsed')) {
+				content.classList.remove('collapsed');
+				content.style.maxHeight = content.scrollHeight + 'px';
+				button.textContent = '▼';
+			} else {
+				content.style.maxHeight = content.scrollHeight + 'px';
+				setTimeout(() => {
+					content.classList.add('collapsed');
+				}, 10);
+				button.textContent = '▶';
+			}
+		}
+
+		// ページ読み込み時に各パネルの初期maxHeightを設定
+		window.addEventListener('load', () => {
+			init();
+
+			// 各パネルコンテンツの初期maxHeightを設定
+			['controlContent', 'outOfRangeContent', 'legendContent'].forEach(id => {
+				const element = document.getElementById(id);
+				if (element) {
+					element.style.maxHeight = element.scrollHeight + 'px';
+				}
+			});
+		});
 	</script>
 </body>
 
