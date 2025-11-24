@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>太陽系縮尺シミュレーター</title>
+
+	<!-- MapLibre GL JS -->
+	<script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+	<link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+
+	<!-- Turf.js -->
+	<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js"></script>
+
+	<style>
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+
+		body {
+			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+		}
+
+		#map {
+			position: absolute;
+			top: 0;
+			bottom: 0;
+			width: 100%;
+		}
+
+		.control-panel {
+			position: absolute;
+			top: 20px;
+			left: 20px;
+			background: white;
+			padding: 20px;
+			border-radius: 8px;
+			box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+			z-index: 1000;
+			min-width: 300px;
+		}
+
+		.control-panel h2 {
+			margin-bottom: 15px;
+			font-size: 18px;
+			color: #333;
+		}
+
+		.input-group {
+			margin-bottom: 15px;
+		}
+
+		.input-group label {
+			display: block;
+			margin-bottom: 5px;
+			font-size: 14px;
+			color: #555;
+		}
+
+		.input-group input {
+			width: 100%;
+			padding: 8px;
+			border: 1px solid #ddd;
+			border-radius: 4px;
+			font-size: 14px;
+		}
+
+		.input-group input:focus {
+			outline: none;
+			border-color: #4CAF50;
+		}
+
+		.update-btn {
+			width: 100%;
+			padding: 10px;
+			background-color: #4CAF50;
+			color: white;
+			border: none;
+			border-radius: 4px;
+			font-size: 16px;
+			cursor: pointer;
+			transition: background-color 0.3s;
+		}
+
+		.update-btn:hover {
+			background-color: #45a049;
+		}
+
+		.legend {
+			position: absolute;
+			bottom: 30px;
+			right: 20px;
+			background: white;
+			padding: 15px;
+			border-radius: 8px;
+			box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+			z-index: 1000;
+		}
+
+		.legend h3 {
+			margin-bottom: 10px;
+			font-size: 14px;
+			color: #333;
+		}
+
+		.legend-item {
+			display: flex;
+			align-items: center;
+			margin-bottom: 5px;
+			font-size: 12px;
+		}
+
+		.legend-color {
+			width: 20px;
+			height: 3px;
+			margin-right: 8px;
+			border-radius: 2px;
+		}
+
+		.info-text {
+			font-size: 12px;
+			color: #666;
+			margin-top: 10px;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="map"></div>
+
+	<div class="control-panel">
+		<h2>🌍 太陽系縮尺シミュレーター</h2>
+
+		<div class="input-group">
+			<label for="earthDiameter">地球の直径 (cm):</label>
+			<input type="number" id="earthDiameter" value="1.3" step="0.1" min="0.1">
+		</div>
+
+		<div class="input-group">
+			<label for="sunDiameter">太陽の直径 (m):</label>
+			<input type="number" id="sunDiameter" step="0.1" min="0.1">
+		</div>
+
+		<button class="update-btn" onclick="updateOrbits()">描画更新</button>
+
+		<div class="info-text">
+			ℹ️ 太陽マーカーをドラッグして位置を変更できます
+		</div>
+	</div>
+
+	<div class="legend">
+		<h3>惑星軌道</h3>
+		<div class="legend-item">
+			<div class="legend-color" style="background-color: #A0A0A0;"></div>
+			<span>水星 (0.39 AU)</span>
+		</div>
+		<div class="legend-item">
+			<div class="legend-color" style="background-color: #FFA500;"></div>
+			<span>金星 (0.72 AU)</span>
+		</div>
+		<div class="legend-item">
+			<div class="legend-color" style="background-color: #4169E1;"></div>
+			<span>地球 (1.00 AU)</span>
+		</div>
+		<div class="legend-item">
+			<div class="legend-color" style="background-color: #DC143C;"></div>
+			<span>火星 (1.52 AU)</span>
+		</div>
+		<div class="legend-item">
+			<div class="legend-color" style="background-color: #DAA520;"></div>
+			<span>木星 (5.20 AU)</span>
+		</div>
+		<div class="legend-item">
+			<div class="legend-color" style="background-color: #F4A460;"></div>
+			<span>土星 (9.58 AU)</span>
+		</div>
+		<div class="legend-item">
+			<div class="legend-color" style="background-color: #40E0D0;"></div>
+			<span>天王星 (19.22 AU)</span>
+		</div>
+		<div class="legend-item">
+			<div class="legend-color" style="background-color: #1E90FF;"></div>
+			<span>海王星 (30.05 AU)</span>
+		</div>
+	</div>
+
+	<script>
+		// ========== 定数定義 ==========
+		// 地球の実際の直径（km）
+		const EARTH_ACTUAL_DIAMETER_KM = 12742;
+
+		// 太陽の実際の直径（km）
+		const SUN_ACTUAL_DIAMETER_KM = 1392700;
+
+		// 1天文単位（km）
+		const AU_IN_KM = 149600000;
+
+		// 惑星データ: 名前、軌道半径（AU）、実際の直径（km）、色
+		const PLANETS = [
+			{ name: '水星', orbitAU: 0.39, diameterKm: 4879, color: '#A0A0A0' },
+			{ name: '金星', orbitAU: 0.72, diameterKm: 12104, color: '#FFA500' },
+			{ name: '地球', orbitAU: 1.00, diameterKm: 12742, color: '#4169E1' },
+			{ name: '火星', orbitAU: 1.52, diameterKm: 6779, color: '#DC143C' },
+			{ name: '木星', orbitAU: 5.20, diameterKm: 139820, color: '#DAA520' },
+			{ name: '土星', orbitAU: 9.58, diameterKm: 116460, color: '#F4A460' },
+			{ name: '天王星', orbitAU: 19.22, diameterKm: 50724, color: '#40E0D0' },
+			{ name: '海王星', orbitAU: 30.05, diameterKm: 49244, color: '#1E90FF' }
+		];
+
+		// 初期中心座標: 和歌山県 四季の郷公園
+		const INITIAL_CENTER = [135.2675, 34.1954]; // [経度, 緯度]
+
+		// ========== グローバル変数 ==========
+		let map;
+		let sunMarker;
+		let sunCoordinates = INITIAL_CENTER;
+
+		// ========== 初期化 ==========
+		function init() {
+			// 地図の初期化
+			map = new maplibregl.Map({
+				container: 'map',
+				style: {
+					version: 8,
+					glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+					sources: {
+						'osm': {
+							type: 'raster',
+							tiles: [
+								'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+								'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+								'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
+							],
+							tileSize: 256,
+							attribution: '© OpenStreetMap contributors'
+						}
+					},
+					layers: [{
+						id: 'osm',
+						type: 'raster',
+						source: 'osm',
+						minzoom: 0,
+						maxzoom: 19
+					}]
+				},
+				center: INITIAL_CENTER,
+				zoom: 14
+			});			// 地図の読み込み完了後
+			map.on('load', () => {
+				// 太陽マーカーの作成
+				createSunMarker();
+
+				// 初期値で太陽の直径を計算
+				updateSunDiameter();
+
+				// 初期描画
+				updateOrbits();
+			});
+
+			// 地球の直径入力時に太陽の直径を自動計算
+			document.getElementById('earthDiameter').addEventListener('input', updateSunDiameter);
+
+			// 太陽の直径入力時に地球の直径を自動計算
+			document.getElementById('sunDiameter').addEventListener('input', updateEarthDiameter);
+
+			// Enterキーで描画更新
+			document.getElementById('earthDiameter').addEventListener('keypress', (e) => {
+				if (e.key === 'Enter') updateOrbits();
+			});
+			document.getElementById('sunDiameter').addEventListener('keypress', (e) => {
+				if (e.key === 'Enter') updateOrbits();
+			});
+		}
+
+		// ========== 太陽マーカーの作成 ==========
+		function createSunMarker() {
+			// カスタムマーカー要素の作成
+			const el = document.createElement('div');
+			el.style.width = '30px';
+			el.style.height = '30px';
+			el.style.borderRadius = '50%';
+			el.style.background = 'radial-gradient(circle, #FFD700, #FFA500)';
+			el.style.border = '3px solid white';
+			el.style.boxShadow = '0 0 15px rgba(255, 165, 0, 0.7)';
+			el.style.cursor = 'move';
+
+			// マーカーの作成
+			sunMarker = new maplibregl.Marker({
+				element: el,
+				draggable: true
+			})
+				.setLngLat(sunCoordinates)
+				.addTo(map);
+
+			// ドラッグ終了時のイベント
+			sunMarker.on('dragend', () => {
+				sunCoordinates = sunMarker.getLngLat().toArray();
+				updateOrbits();
+			});
+		}
+
+		// ========== 地球の直径から太陽の直径を計算 ==========
+		function updateSunDiameter() {
+			const earthDiameterCm = parseFloat(document.getElementById('earthDiameter').value);
+			if (isNaN(earthDiameterCm) || earthDiameterCm <= 0) return;
+
+			// 縮尺係数の計算
+			// Scale = 入力された地球の直径(cm) / (地球の実際の直径(km) * 100,000)
+			const scale = earthDiameterCm / (EARTH_ACTUAL_DIAMETER_KM * 100000);
+
+			// 太陽の縮尺後の直径（cm）
+			const sunDiameterCm = SUN_ACTUAL_DIAMETER_KM * 100000 * scale;
+
+			// メートルに変換
+			const sunDiameterM = sunDiameterCm / 100;
+
+			// 太陽の直径フィールドに設定
+			document.getElementById('sunDiameter').value = sunDiameterM.toFixed(2);
+		}
+
+		// ========== 太陽の直径から地球の直径を計算 ==========
+		function updateEarthDiameter() {
+			const sunDiameterM = parseFloat(document.getElementById('sunDiameter').value);
+			if (isNaN(sunDiameterM) || sunDiameterM <= 0) return;
+
+			// 太陽の直径をcmに変換
+			const sunDiameterCm = sunDiameterM * 100;
+
+			// 縮尺係数の計算
+			const scale = sunDiameterCm / (SUN_ACTUAL_DIAMETER_KM * 100000);
+
+			// 地球の縮尺後の直径（cm）
+			const earthDiameterCm = EARTH_ACTUAL_DIAMETER_KM * 100000 * scale;
+
+			// 地球の直径フィールドに設定
+			document.getElementById('earthDiameter').value = earthDiameterCm.toFixed(2);
+		}
+
+		// ========== 軌道の更新・描画 ==========
+		function updateOrbits() {
+			const earthDiameterCm = parseFloat(document.getElementById('earthDiameter').value);
+
+			if (isNaN(earthDiameterCm) || earthDiameterCm <= 0) {
+				alert('有効な地球の直径を入力してください');
+				return;
+			}
+
+			// 縮尺係数の計算
+			// Scale = 入力された地球の直径(cm) / (地球の実際の直径(km) * 100,000)
+			const scale = earthDiameterCm / (EARTH_ACTUAL_DIAMETER_KM * 100000);
+
+			// 1AU が地図上で何メートルになるかを計算
+			// 1AU (km) → cm に変換して縮尺係数を掛け、メートルに戻す
+			const oneAUInMeters = (AU_IN_KM * 100000 * scale) / 100;
+
+			console.log(`縮尺: 地球 ${earthDiameterCm} cm`);
+			console.log(`1AU = ${oneAUInMeters.toFixed(2)} m`);
+
+			// 既存の軌道レイヤーとソースを削除
+			PLANETS.forEach(planet => {
+				const orbitLayerId = `orbit-${planet.name}`;
+				const orbitSourceId = `orbit-source-${planet.name}`;
+				const planetLayerId = `planet-${planet.name}`;
+				const planetSourceId = `planet-source-${planet.name}`;
+				const labelLayerId = `label-${planet.name}`;
+				const labelSourceId = `label-source-${planet.name}`;
+
+				if (map.getLayer(orbitLayerId)) {
+					map.removeLayer(orbitLayerId);
+				}
+				if (map.getSource(orbitSourceId)) {
+					map.removeSource(orbitSourceId);
+				}
+				if (map.getLayer(planetLayerId)) {
+					map.removeLayer(planetLayerId);
+				}
+				if (map.getSource(planetSourceId)) {
+					map.removeSource(planetSourceId);
+				}
+				if (map.getLayer(labelLayerId)) {
+					map.removeLayer(labelLayerId);
+				}
+				if (map.getSource(labelSourceId)) {
+					map.removeSource(labelSourceId);
+				}
+			});
+
+			// 各惑星の軌道と惑星本体を描画
+			PLANETS.forEach(planet => {
+				// 軌道半径（メートル）
+				const orbitRadiusMeters = planet.orbitAU * oneAUInMeters;
+
+				// 軌道半径をキロメートルに変換（Turf.jsはkmを使用）
+				const orbitRadiusKm = orbitRadiusMeters / 1000;
+
+				// 惑星の直径（メートル）を計算
+				const planetDiameterMeters = (planet.diameterKm * 100000 * scale) / 100;
+				const planetRadiusKm = (planetDiameterMeters / 2) / 1000;
+
+				// 軌道円を生成
+				const orbitCircle = turf.circle(sunCoordinates, orbitRadiusKm, {
+					steps: 128,
+					units: 'kilometers'
+				});
+
+				// 惑星の位置を計算（軌道上の右側、0度の位置）
+				const planetPosition = turf.destination(sunCoordinates, orbitRadiusKm, 90, { units: 'kilometers' });
+
+				// 惑星の円を生成
+				const planetCircle = turf.circle(planetPosition.geometry.coordinates, planetRadiusKm, {
+					steps: 64,
+					units: 'kilometers'
+				});
+
+				const orbitSourceId = `orbit-source-${planet.name}`;
+				const orbitLayerId = `orbit-${planet.name}`;
+				const planetSourceId = `planet-source-${planet.name}`;
+				const planetLayerId = `planet-${planet.name}`;
+
+				// 軌道のソースとレイヤーを追加
+				map.addSource(orbitSourceId, {
+					type: 'geojson',
+					data: orbitCircle
+				});
+
+				map.addLayer({
+					id: orbitLayerId,
+					type: 'line',
+					source: orbitSourceId,
+					paint: {
+						'line-color': planet.color,
+						'line-width': 4,
+						'line-opacity': 0.6
+					}
+				});
+
+				// 惑星のソースとレイヤーを追加（塗りつぶし円として描画）
+				map.addSource(planetSourceId, {
+					type: 'geojson',
+					data: planetCircle
+				});
+
+				map.addLayer({
+					id: planetLayerId,
+					type: 'fill',
+					source: planetSourceId,
+					paint: {
+						'fill-color': planet.color,
+						'fill-opacity': 0.8
+					}
+				});
+
+				// 惑星ラベルの追加
+				const labelSourceId = `label-source-${planet.name}`;
+				const labelLayerId = `label-${planet.name}`;
+
+				// ラベル用のポイントを作成
+				const labelPoint = turf.point(planetPosition.geometry.coordinates, {
+					name: planet.name
+				});
+
+				map.addSource(labelSourceId, {
+					type: 'geojson',
+					data: labelPoint
+				});
+
+				map.addLayer({
+					id: labelLayerId,
+					type: 'symbol',
+					source: labelSourceId,
+					layout: {
+						'text-field': ['get', 'name'],
+						'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+						'text-size': 20,
+						'text-offset': [0, -2.5],
+						'text-anchor': 'bottom'
+					},
+					paint: {
+						'text-color': planet.color,
+						'text-halo-color': '#ffffff',
+						'text-halo-width': 3
+					}
+				}); console.log(`${planet.name}: 軌道 ${orbitRadiusMeters.toFixed(2)} m, 直径 ${planetDiameterMeters.toFixed(4)} m`);
+			});
+		}
+
+		// ========== ページ読み込み時に初期化 ==========
+		window.addEventListener('load', init);
+	</script>
+</body>
+
+</html>
