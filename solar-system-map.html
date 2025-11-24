@@ -182,7 +182,7 @@
 	</div>
 
 	<div class="legend">
-		<h3>惑星軌道</h3>
+		<h3>天体・領域</h3>
 		<div class="legend-item">
 			<div class="legend-color" style="background-color: #A0A0A0;"></div>
 			<span>水星 (0.39 AU)</span>
@@ -215,6 +215,26 @@
 			<div class="legend-color" style="background-color: #1E90FF;"></div>
 			<span>海王星 (30.05 AU)</span>
 		</div>
+		<div class="legend-item">
+			<div class="legend-color" style="background-color: #8B7355;"></div>
+			<span>冥王星 (39.48 AU)</span>
+		</div>
+		<div class="legend-item">
+			<div class="legend-color" style="background-color: #696969;"></div>
+			<span>カイパーベルト (50 AU)</span>
+		</div>
+		<div class="legend-item">
+			<div class="legend-color" style="background-color: #2F4F4F;"></div>
+			<span>オールトの雲内縁 (2,000 AU)</span>
+		</div>
+		<div class="legend-item">
+			<div class="legend-color" style="background-color: #1C1C1C;"></div>
+			<span>オールトの雲外縁 (100,000 AU)</span>
+		</div>
+		<div class="legend-item">
+			<div class="legend-color" style="background-color: #FF6347;"></div>
+			<span>プロキシマ・ケンタウリ (268,770 AU)</span>
+		</div>
 	</div>
 
 	<script>
@@ -228,16 +248,21 @@
 		// 1天文単位（km）
 		const AU_IN_KM = 149600000;
 
-		// 惑星データ: 名前、軌道半径（AU）、実際の直径（km）、色
+		// 惑星データ: 名前、軌道半径（AU）、実際の直径（km）、色、種別
 		const PLANETS = [
-			{ name: '水星', orbitAU: 0.39, diameterKm: 4879, color: '#A0A0A0' },
-			{ name: '金星', orbitAU: 0.72, diameterKm: 12104, color: '#FFA500' },
-			{ name: '地球', orbitAU: 1.00, diameterKm: 12742, color: '#4169E1' },
-			{ name: '火星', orbitAU: 1.52, diameterKm: 6779, color: '#DC143C' },
-			{ name: '木星', orbitAU: 5.20, diameterKm: 139820, color: '#DAA520' },
-			{ name: '土星', orbitAU: 9.58, diameterKm: 116460, color: '#F4A460' },
-			{ name: '天王星', orbitAU: 19.22, diameterKm: 50724, color: '#40E0D0' },
-			{ name: '海王星', orbitAU: 30.05, diameterKm: 49244, color: '#1E90FF' }
+			{ name: '水星', orbitAU: 0.39, diameterKm: 4879, color: '#A0A0A0', type: 'planet' },
+			{ name: '金星', orbitAU: 0.72, diameterKm: 12104, color: '#FFA500', type: 'planet' },
+			{ name: '地球', orbitAU: 1.00, diameterKm: 12742, color: '#4169E1', type: 'planet' },
+			{ name: '火星', orbitAU: 1.52, diameterKm: 6779, color: '#DC143C', type: 'planet' },
+			{ name: '木星', orbitAU: 5.20, diameterKm: 139820, color: '#DAA520', type: 'planet' },
+			{ name: '土星', orbitAU: 9.58, diameterKm: 116460, color: '#F4A460', type: 'planet' },
+			{ name: '天王星', orbitAU: 19.22, diameterKm: 50724, color: '#40E0D0', type: 'planet' },
+			{ name: '海王星', orbitAU: 30.05, diameterKm: 49244, color: '#1E90FF', type: 'planet' },
+			{ name: '冥王星', orbitAU: 39.48, diameterKm: 2376, color: '#8B7355', type: 'dwarf' },
+			{ name: 'カイパーベルト', orbitAU: 50, diameterKm: 0, color: '#696969', type: 'region' },
+			{ name: 'オールトの雲(内縁)', orbitAU: 2000, diameterKm: 0, color: '#2F4F4F', type: 'region' },
+			{ name: 'オールトの雲(外縁)', orbitAU: 100000, diameterKm: 0, color: '#1C1C1C', type: 'region' },
+			{ name: 'プロキシマ・ケンタウリ', orbitAU: 268770, diameterKm: 0, color: '#FF6347', type: 'star' }
 		];
 
 		// 初期中心座標: 和歌山県 四季の郷公園
@@ -516,7 +541,7 @@
 				const orbitRadiusKm = orbitRadiusMeters / 1000;
 
 				// 惑星の直径（メートル）を計算
-				const planetDiameterMeters = (planet.diameterKm * 100000 * scale) / 100;
+				const planetDiameterMeters = planet.diameterKm > 0 ? (planet.diameterKm * 100000 * scale) / 100 : 0;
 				const planetRadiusKm = (planetDiameterMeters / 2) / 1000;
 
 				// 軌道円を生成
@@ -545,32 +570,45 @@
 					data: orbitCircle
 				});
 
+				// 軌道の線幅と透明度を種別によって調整
+				const lineWidth = planet.type === 'region' ? 2 : (planet.type === 'star' ? 3 : 4);
+				const lineOpacity = planet.type === 'region' ? 0.3 : (planet.type === 'star' ? 0.5 : 0.6);
+				const lineDasharray = planet.type === 'region' ? [5, 5] : (planet.type === 'star' ? [10, 10] : null);
+
+				const layerPaint = {
+					'line-color': planet.color,
+					'line-width': lineWidth,
+					'line-opacity': lineOpacity
+				};
+				if (lineDasharray) {
+					layerPaint['line-dasharray'] = lineDasharray;
+				}
+
 				map.addLayer({
 					id: orbitLayerId,
 					type: 'line',
 					source: orbitSourceId,
-					paint: {
-						'line-color': planet.color,
-						'line-width': 4,
-						'line-opacity': 0.6
-					}
+					paint: layerPaint
 				});
 
 				// 惑星のソースとレイヤーを追加（塗りつぶし円として描画）
-				map.addSource(planetSourceId, {
-					type: 'geojson',
-					data: planetCircle
-				});
+				// 領域や恒星（直径0）は惑星本体を描画しない
+				if (planet.diameterKm > 0) {
+					map.addSource(planetSourceId, {
+						type: 'geojson',
+						data: planetCircle
+					});
 
-				map.addLayer({
-					id: planetLayerId,
-					type: 'fill',
-					source: planetSourceId,
-					paint: {
-						'fill-color': planet.color,
-						'fill-opacity': 0.8
-					}
-				});
+					map.addLayer({
+						id: planetLayerId,
+						type: 'fill',
+						source: planetSourceId,
+						paint: {
+							'fill-color': planet.color,
+							'fill-opacity': 0.8
+						}
+					});
+				}
 
 				// 惑星ラベルの追加
 				const labelSourceId = `label-source-${planet.name}`;
@@ -586,6 +624,9 @@
 					data: labelPoint
 				});
 
+				// ラベルサイズを天体の種類によって調整
+				const textSize = planet.type === 'star' ? 16 : (planet.type === 'region' ? 14 : 20);
+
 				map.addLayer({
 					id: labelLayerId,
 					type: 'symbol',
@@ -593,7 +634,7 @@
 					layout: {
 						'text-field': ['get', 'name'],
 						'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-						'text-size': 20,
+						'text-size': textSize,
 						'text-offset': [0, -2.5],
 						'text-anchor': 'bottom'
 					},
