@@ -235,6 +235,14 @@
 			<div class="legend-color" style="background-color: #FF6347;"></div>
 			<span>プロキシマ・ケンタウリ (268,770 AU)</span>
 		</div>
+		<div class="legend-item">
+			<div class="legend-color" style="background-color: #87CEEB;"></div>
+			<span>シリウス (542,520 AU)</span>
+		</div>
+		<div class="legend-item">
+			<div class="legend-color" style="background-color: #E0FFFF;"></div>
+			<span>ベガ (1,625,000 AU)</span>
+		</div>
 	</div>
 
 	<script>
@@ -261,8 +269,9 @@
 			{ name: '冥王星', orbitAU: 39.48, diameterKm: 2376, color: '#8B7355', type: 'dwarf' },
 			{ name: 'カイパーベルト', orbitAU: 50, diameterKm: 0, color: '#696969', type: 'region' },
 			{ name: 'オールトの雲(内縁)', orbitAU: 2000, diameterKm: 0, color: '#2F4F4F', type: 'region' },
-			{ name: 'オールトの雲(外縁)', orbitAU: 100000, diameterKm: 0, color: '#1C1C1C', type: 'region' },
-			{ name: 'プロキシマ・ケンタウリ', orbitAU: 268770, diameterKm: 0, color: '#FF6347', type: 'star' }
+			{ name: 'プロキシマ・ケンタウリ', orbitAU: 268770, diameterKm: 0, color: '#FF6347', type: 'star' },
+			{ name: 'シリウス', orbitAU: 542520, diameterKm: 0, color: '#87CEEB', type: 'star' },
+			{ name: 'ベガ', orbitAU: 1584000, diameterKm: 0, color: '#E0FFFF', type: 'star' }
 		];
 
 		// 初期中心座標: 和歌山県 四季の郷公園
@@ -540,6 +549,12 @@
 				// 軌道半径をキロメートルに変換（Turf.jsはkmを使用）
 				const orbitRadiusKm = orbitRadiusMeters / 1000;
 
+				// 軌道半径が20,000kmを超える場合はスキップ
+				if (orbitRadiusKm > 20000) {
+					console.log(`${planet.name}: 軌道 ${orbitRadiusKm.toFixed(2)} km - 表示範囲外のためスキップ`);
+					return;
+				}
+
 				// 惑星の直径（メートル）を計算
 				const planetDiameterMeters = planet.diameterKm > 0 ? (planet.diameterKm * 100000 * scale) / 100 : 0;
 				const planetRadiusKm = (planetDiameterMeters / 2) / 1000;
@@ -610,7 +625,7 @@
 					});
 				}
 
-				// 惑星ラベルの追加
+				// 惑星ラベルの追加（全ての天体に対して）
 				const labelSourceId = `label-source-${planet.name}`;
 				const labelLayerId = `label-${planet.name}`;
 
@@ -625,7 +640,7 @@
 				});
 
 				// ラベルサイズを天体の種類によって調整
-				const textSize = planet.type === 'star' ? 16 : (planet.type === 'region' ? 14 : 20);
+				const textSize = planet.type === 'star' ? 16 : (planet.type === 'region' ? 14 : (planet.type === 'dwarf' ? 18 : 20));
 
 				map.addLayer({
 					id: labelLayerId,
@@ -643,7 +658,9 @@
 						'text-halo-color': '#ffffff',
 						'text-halo-width': 3
 					}
-				}); console.log(`${planet.name}: 軌道 ${orbitRadiusMeters.toFixed(2)} m, 直径 ${planetDiameterMeters.toFixed(4)} m`);
+				});
+
+				console.log(`${planet.name}: 軌道 ${orbitRadiusMeters.toFixed(2)} m, 直径 ${planetDiameterMeters.toFixed(4)} m`);
 			});
 		}
 
