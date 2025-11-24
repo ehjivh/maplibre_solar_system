@@ -89,6 +89,25 @@
 			background-color: #45a049;
 		}
 
+		.map-selector {
+			margin-bottom: 15px;
+		}
+
+		.map-selector select {
+			width: 100%;
+			padding: 8px;
+			border: 1px solid #ddd;
+			border-radius: 4px;
+			font-size: 14px;
+			background-color: white;
+			cursor: pointer;
+		}
+
+		.map-selector select:focus {
+			outline: none;
+			border-color: #4CAF50;
+		}
+
 		.legend {
 			position: absolute;
 			bottom: 30px;
@@ -133,6 +152,17 @@
 
 	<div class="control-panel">
 		<h2>🌍 太陽系縮尺シミュレーター</h2>
+
+		<div class="map-selector">
+			<label for="mapStyle">背景地図:</label>
+			<select id="mapStyle" onchange="changeMapStyle()">
+				<option value="osm">OpenStreetMap</option>
+				<option value="gsi-std">地理院地図(標準)</option>
+				<option value="gsi-pale">地理院地図(淡色)</option>
+				<option value="gsi-blank">地理院地図(白地図)</option>
+				<option value="gsi-photo">地理院地図(衛星写真)</option>
+			</select>
+		</div>
 
 		<div class="input-group">
 			<label for="earthDiameter">地球の直径 (cm):</label>
@@ -211,41 +241,130 @@
 		];
 
 		// 初期中心座標: 和歌山県 四季の郷公園
-		const INITIAL_CENTER = [135.2675, 34.1954]; // [経度, 緯度]
+		const INITIAL_CENTER = [135.2597718, 34.2161407]; // [経度, 緯度]
 
 		// ========== グローバル変数 ==========
 		let map;
 		let sunMarker;
 		let sunCoordinates = INITIAL_CENTER;
 
+		// 地図スタイル定義
+		const MAP_STYLES = {
+			'osm': {
+				version: 8,
+				glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+				sources: {
+					'osm': {
+						type: 'raster',
+						tiles: [
+							'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+							'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+							'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
+						],
+						tileSize: 256,
+						attribution: '© OpenStreetMap contributors'
+					}
+				},
+				layers: [{
+					id: 'osm',
+					type: 'raster',
+					source: 'osm',
+					minzoom: 0,
+					maxzoom: 19
+				}]
+			},
+			'gsi-std': {
+				version: 8,
+				glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+				sources: {
+					'gsi-std': {
+						type: 'raster',
+						tiles: [
+							'https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png'
+						],
+						tileSize: 256,
+						attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>'
+					}
+				},
+				layers: [{
+					id: 'gsi-std',
+					type: 'raster',
+					source: 'gsi-std',
+					minzoom: 0,
+					maxzoom: 18
+				}]
+			},
+			'gsi-pale': {
+				version: 8,
+				glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+				sources: {
+					'gsi-pale': {
+						type: 'raster',
+						tiles: [
+							'https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png'
+						],
+						tileSize: 256,
+						attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>'
+					}
+				},
+				layers: [{
+					id: 'gsi-pale',
+					type: 'raster',
+					source: 'gsi-pale',
+					minzoom: 0,
+					maxzoom: 18
+				}]
+			},
+			'gsi-blank': {
+				version: 8,
+				glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+				sources: {
+					'gsi-blank': {
+						type: 'raster',
+						tiles: [
+							'https://cyberjapandata.gsi.go.jp/xyz/blank/{z}/{x}/{y}.png'
+						],
+						tileSize: 256,
+						attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>'
+					}
+				},
+				layers: [{
+					id: 'gsi-blank-layer',
+					type: 'raster',
+					source: 'gsi-blank',
+					minzoom: 0,
+					maxzoom: 14
+				}]
+			},
+			'gsi-photo': {
+				version: 8,
+				glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+				sources: {
+					'gsi-photo': {
+						type: 'raster',
+						tiles: [
+							'https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg'
+						],
+						tileSize: 256,
+						attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>'
+					}
+				},
+				layers: [{
+					id: 'gsi-photo',
+					type: 'raster',
+					source: 'gsi-photo',
+					minzoom: 0,
+					maxzoom: 18
+				}]
+			}
+		};
+
 		// ========== 初期化 ==========
 		function init() {
 			// 地図の初期化
 			map = new maplibregl.Map({
 				container: 'map',
-				style: {
-					version: 8,
-					glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
-					sources: {
-						'osm': {
-							type: 'raster',
-							tiles: [
-								'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
-								'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
-								'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
-							],
-							tileSize: 256,
-							attribution: '© OpenStreetMap contributors'
-						}
-					},
-					layers: [{
-						id: 'osm',
-						type: 'raster',
-						source: 'osm',
-						minzoom: 0,
-						maxzoom: 19
-					}]
-				},
+				style: MAP_STYLES['osm'],
 				center: INITIAL_CENTER,
 				zoom: 14
 			});			// 地図の読み込み完了後
@@ -484,6 +603,55 @@
 						'text-halo-width': 3
 					}
 				}); console.log(`${planet.name}: 軌道 ${orbitRadiusMeters.toFixed(2)} m, 直径 ${planetDiameterMeters.toFixed(4)} m`);
+			});
+		}
+
+		// ========== 地図スタイル切り替え ==========
+		function changeMapStyle() {
+			const selectedStyle = document.getElementById('mapStyle').value;
+
+			// 現在の軌道データを保存
+			const orbitsData = {};
+			PLANETS.forEach(planet => {
+				const orbitSourceId = `orbit-source-${planet.name}`;
+				const planetSourceId = `planet-source-${planet.name}`;
+				const labelSourceId = `label-source-${planet.name}`;
+
+				if (map.getSource(orbitSourceId)) {
+					orbitsData[`orbit-${planet.name}`] = map.getSource(orbitSourceId)._data;
+				}
+				if (map.getSource(planetSourceId)) {
+					orbitsData[`planet-${planet.name}`] = map.getSource(planetSourceId)._data;
+				}
+				if (map.getSource(labelSourceId)) {
+					orbitsData[`label-${planet.name}`] = map.getSource(labelSourceId)._data;
+				}
+			});
+
+			// 現在の中心座標とズームレベルを保存
+			const currentCenter = map.getCenter();
+			const currentZoom = map.getZoom();
+			const currentSunCoords = sunCoordinates;
+
+			// 地図スタイルを変更
+			map.setStyle(MAP_STYLES[selectedStyle]);
+
+			// スタイル読み込み完了後に軌道を再描画
+			map.once('styledata', () => {
+				// 中心座標とズームを復元
+				map.setCenter(currentCenter);
+				map.setZoom(currentZoom);
+
+				// 太陽の位置を復元
+				sunCoordinates = currentSunCoords;
+				if (sunMarker) {
+					sunMarker.setLngLat(sunCoordinates);
+				}
+
+				// 軌道を再描画
+				if (Object.keys(orbitsData).length > 0) {
+					updateOrbits();
+				}
 			});
 		}
 
