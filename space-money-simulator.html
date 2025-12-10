@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>宇宙の距離をお金で実感する</title>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+	<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+	<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+	<style>
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+
+		body {
+			font-family: 'Noto Sans JP', sans-serif;
+			background: linear-gradient(135deg, #0a1628 0%, #1a2744 50%, #0a1628 100%);
+			color: #ffffff;
+			min-height: 100vh;
+			padding: 20px;
+		}
+
+		.container {
+			max-width: 1400px;
+			margin: 0 auto;
+		}
+
+		/* ヘッダー */
+		header {
+			text-align: center;
+			padding: 40px 20px;
+			margin-bottom: 30px;
+		}
+
+		h1 {
+			font-family: 'Orbitron', sans-serif;
+			font-size: 2.5rem;
+			background: linear-gradient(45deg, #ffd700, #ffed4e);
+			-webkit-background-clip: text;
+			-webkit-text-fill-color: transparent;
+			background-clip: text;
+			margin-bottom: 10px;
+			text-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+		}
+
+		.subtitle {
+			color: #8899bb;
+			font-size: 1.1rem;
+		}
+
+		/* モード切り替えセクション */
+		.mode-section {
+			background: rgba(255, 255, 255, 0.05);
+			border: 2px solid rgba(255, 215, 0, 0.3);
+			border-radius: 20px;
+			padding: 30px;
+			margin-bottom: 30px;
+			backdrop-filter: blur(10px);
+		}
+
+		.mode-buttons {
+			display: flex;
+			gap: 20px;
+			justify-content: center;
+			margin-bottom: 20px;
+			flex-wrap: wrap;
+		}
+
+		.mode-btn {
+			font-family: 'Orbitron', sans-serif;
+			font-size: 1.2rem;
+			padding: 20px 40px;
+			border: 3px solid #ffd700;
+			background: rgba(255, 215, 0, 0.1);
+			color: #ffd700;
+			border-radius: 15px;
+			cursor: pointer;
+			transition: all 0.3s ease;
+			display: flex;
+			align-items: center;
+			gap: 10px;
+		}
+
+		.mode-btn:hover {
+			background: rgba(255, 215, 0, 0.2);
+			transform: translateY(-3px);
+			box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3);
+		}
+
+		.mode-btn.active {
+			background: linear-gradient(135deg, #ffd700, #ffed4e);
+			color: #0a1628;
+			font-weight: bold;
+			box-shadow: 0 10px 40px rgba(255, 215, 0, 0.5);
+		}
+
+		.current-rate {
+			text-align: center;
+			color: #8899bb;
+			font-size: 1.1rem;
+			margin-bottom: 20px;
+		}
+
+		.current-rate strong {
+			color: #ffd700;
+			font-family: 'Roboto Mono', monospace;
+		}
+
+		/* コーヒーレート設定 */
+		.coffee-rate-setting {
+			background: rgba(255, 215, 0, 0.1);
+			border: 2px solid rgba(255, 215, 0, 0.3);
+			border-radius: 15px;
+			padding: 20px;
+			margin-top: 20px;
+			text-align: center;
+		}
+
+		.coffee-rate-setting label {
+			color: #ffd700;
+			font-size: 1.1rem;
+			display: block;
+			margin-bottom: 15px;
+		}
+
+		.coffee-rate-input-group {
+			display: flex;
+			gap: 10px;
+			justify-content: center;
+			align-items: center;
+			flex-wrap: wrap;
+		}
+
+		.coffee-rate-input-group input {
+			padding: 12px 20px;
+			font-size: 1.2rem;
+			border: 2px solid #ffd700;
+			background: rgba(255, 255, 255, 0.1);
+			color: #fff;
+			border-radius: 10px;
+			width: 150px;
+			font-family: 'Roboto Mono', monospace;
+		}
+
+		.coffee-rate-input-group button {
+			padding: 12px 30px;
+			font-size: 1.1rem;
+			border: 2px solid #ffd700;
+			background: rgba(255, 215, 0, 0.2);
+			color: #ffd700;
+			border-radius: 10px;
+			cursor: pointer;
+			transition: all 0.3s ease;
+			font-weight: bold;
+		}
+
+		.coffee-rate-input-group button:hover {
+			background: linear-gradient(135deg, #ffd700, #ffed4e);
+			color: #0a1628;
+			transform: scale(1.05);
+		}
+
+		/* グラフセクション */
+		.chart-section {
+			background: rgba(255, 255, 255, 0.05);
+			border-radius: 20px;
+			padding: 30px;
+			margin-bottom: 40px;
+		}
+
+		.chart-section h2 {
+			font-family: 'Orbitron', sans-serif;
+			color: #ffd700;
+			margin-bottom: 20px;
+			text-align: center;
+		}
+
+		#distanceChart {
+			max-height: 600px;
+		}
+
+		/* カスタム計算機 */
+		.calculator-section {
+			background: rgba(255, 255, 255, 0.05);
+			border-radius: 20px;
+			padding: 30px;
+			margin-bottom: 40px;
+		}
+
+		.calculator-section h2 {
+			font-family: 'Orbitron', sans-serif;
+			color: #ffd700;
+			margin-bottom: 20px;
+			text-align: center;
+		}
+
+		.calculator-input {
+			display: flex;
+			gap: 15px;
+			justify-content: center;
+			align-items: center;
+			margin-bottom: 20px;
+			flex-wrap: wrap;
+		}
+
+		.calculator-input input {
+			padding: 15px;
+			font-size: 1.2rem;
+			border: 2px solid #4a90e2;
+			background: rgba(74, 144, 226, 0.1);
+			color: #fff;
+			border-radius: 10px;
+			width: 250px;
+			font-family: 'Roboto Mono', monospace;
+		}
+
+		.calculator-input input::placeholder {
+			color: rgba(255, 255, 255, 0.5);
+		}
+
+		.calculator-result {
+			background: rgba(255, 215, 0, 0.1);
+			border: 2px solid rgba(255, 215, 0, 0.3);
+			border-radius: 15px;
+			padding: 30px;
+			text-align: center;
+		}
+
+		.calculator-result .amount {
+			font-family: 'Roboto Mono', monospace;
+			font-size: 2.5rem;
+			color: #ffd700;
+			margin-bottom: 15px;
+		}
+
+		.calculator-result .comparison-text {
+			color: #8899bb;
+			font-size: 1.1rem;
+		}
+
+		/* 詳細テーブル */
+		.table-section {
+			background: rgba(255, 255, 255, 0.05);
+			border-radius: 20px;
+			padding: 30px;
+			margin-bottom: 40px;
+			overflow-x: auto;
+		}
+
+		.table-section h2 {
+			font-family: 'Orbitron', sans-serif;
+			color: #ffd700;
+			margin-bottom: 20px;
+			text-align: center;
+		}
+
+		table {
+			width: 100%;
+			border-collapse: collapse;
+			font-family: 'Roboto Mono', monospace;
+		}
+
+		th {
+			background: rgba(255, 215, 0, 0.2);
+			color: #ffd700;
+			padding: 15px;
+			text-align: left;
+			border-bottom: 2px solid #ffd700;
+			cursor: pointer;
+			user-select: none;
+		}
+
+		th:hover {
+			background: rgba(255, 215, 0, 0.3);
+		}
+
+		td {
+			padding: 15px;
+			border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+		}
+
+		tr:hover {
+			background: rgba(255, 255, 255, 0.05);
+		}
+
+		.category-badge {
+			display: inline-block;
+			padding: 5px 12px;
+			border-radius: 15px;
+			font-size: 0.85rem;
+			font-weight: bold;
+		}
+
+		.category-earth {
+			background: #4a90e2;
+		}
+
+		.category-solar {
+			background: #f39c12;
+		}
+
+		.category-star {
+			background: #9b59b6;
+		}
+
+		.category-galaxy {
+			background: #e91e63;
+		}
+
+		.category-beyond {
+			background: #673ab7;
+		}
+
+		/* レスポンシブ */
+		@media (max-width: 768px) {
+			h1 {
+				font-size: 1.8rem;
+			}
+
+			.mode-btn {
+				font-size: 1rem;
+				padding: 15px 25px;
+			}
+
+			.highlight-cards {
+				grid-template-columns: 1fr;
+			}
+
+			.comparison-selectors {
+				flex-direction: column;
+			}
+
+			.calculator-input {
+				flex-direction: column;
+			}
+
+			table {
+				font-size: 0.85rem;
+			}
+		}
+
+		/* アニメーション */
+		@keyframes countUp {
+			from {
+				opacity: 0;
+				transform: translateY(20px);
+			}
+
+			to {
+				opacity: 1;
+				transform: translateY(0);
+			}
+		}
+
+		.animate-count {
+			animation: countUp 0.5s ease-out;
+		}
+
+		/* フッター */
+		footer {
+			text-align: center;
+			padding: 40px 20px;
+			color: #8899bb;
+			font-size: 0.9rem;
+		}
+	</style>
+</head>
+
+<body>
+	<div class="container">
+		<!-- ヘッダー -->
+		<header>
+			<h1>🌌 宇宙の距離をお金で実感する 💰</h1>
+			<p class="subtitle">地球一周から観測可能な宇宙まで、距離を金額に換算して比較</p>
+		</header>
+
+		<!-- モード切り替えセクション -->
+		<section class="mode-section">
+			<div class="mode-buttons">
+				<button class="mode-btn active" data-mode="km" onclick="switchMode('km')">
+					<i class="fas fa-globe"></i> kmモード
+				</button>
+				<button class="mode-btn" data-mode="lightyear" onclick="switchMode('lightyear')">
+					<i class="fas fa-star"></i> 光年モード
+				</button>
+			</div>
+			<p class="current-rate">現在の換算レート: <strong id="currentRateText">1km = 1円</strong></p>
+		</section>
+
+		<!-- グラフセクション -->
+		<section class="chart-section">
+			<h2>📊 対数スケール比較グラフ</h2>
+			<canvas id="distanceChart"></canvas>
+		</section>
+
+		<!-- 詳細テーブル -->
+		<section class="table-section">
+			<h2>📋 全データ一覧</h2>
+			<table id="dataTable">
+				<thead>
+					<tr>
+						<th onclick="sortTable(0)">カテゴリ</th>
+						<th onclick="sortTable(1)">名称</th>
+						<th onclick="sortTable(2)">距離</th>
+						<th onclick="sortTable(3)">金額</th>
+						<th onclick="sortTable(4)">モノの数</th>
+						<th onclick="sortTable(5)">光速での所要時間</th>
+						<th onclick="sortTable(6)">人生イベント換算</th>
+					</tr>
+				</thead>
+				<tbody id="tableBody">
+					<!-- JavaScriptで動的生成 -->
+				</tbody>
+			</table>
+		</section>
+
+		<!-- フッター -->
+		<footer>
+			<p>🌟 データ出典: NASA, 国立天文台, Wikipedia</p>
+			<p>© 2025 宇宙距離金額換算シミュレーター</p>
+		</footer>
+	</div>
+
+	<script>
+		// 定数
+		const LIGHT_YEAR_IN_KM = 9.461e12;
+
+		// 比較基準の単価
+		const PRICE_REFERENCES = {
+			canJuice: 150,           // 缶ジュース
+			iphone: 150000,          // 最新iPhone Pro
+			keyCar: 1500000,         // 軽自動車
+			luxuryMansion: 500000000, // 都心の高級マンション
+			tokyoSkytree: 65000000000, // 東京スカイツリー建設費
+			japanBudget: 110000000000000 // 日本の年間国家予算
+		};
+
+		// データベース
+		const spaceDistances = [
+			{
+				id: 1,
+				name: "東京-大阪",
+				category: "地球周辺",
+				distanceKm: 500,
+				distanceLightYears: 500 / LIGHT_YEAR_IN_KM,
+				description: "新幹線で約2時間半",
+				icon: "🚅",
+				timeLightSpeed: "0.0017秒",
+				lifeEventComparison: "瞬き 約0.5回分",
+				categoryClass: "category-earth"
+			},
+			{
+				id: 2,
+				name: "地球一周",
+				category: "地球周辺",
+				distanceKm: 40075,
+				distanceLightYears: 40075 / LIGHT_YEAR_IN_KM,
+				description: "赤道上の距離",
+				icon: "🌍",
+				timeLightSpeed: "0.13秒",
+				lifeEventComparison: "指パッチン 約1回分",
+				categoryClass: "category-earth"
+			},
+			{
+				id: 3,
+				name: "地球-月",
+				category: "地球周辺",
+				distanceKm: 384400,
+				distanceLightYears: 384400 / LIGHT_YEAR_IN_KM,
+				description: "平均距離",
+				icon: "🌙",
+				timeLightSpeed: "1.3秒",
+				lifeEventComparison: "深呼吸 約1回分",
+				categoryClass: "category-earth"
+			},
+			{
+				id: 4,
+				name: "地球-太陽",
+				category: "太陽系",
+				distanceKm: 149600000,
+				distanceLightYears: 149600000 / LIGHT_YEAR_IN_KM,
+				description: "1天文単位(AU)",
+				icon: "☀️",
+				timeLightSpeed: "8.3分",
+				lifeEventComparison: "通勤時間 約1回分",
+				categoryClass: "category-solar"
+			},
+			{
+				id: 5,
+				name: "地球-火星(最接近)",
+				category: "太陽系",
+				distanceKm: 54600000,
+				distanceLightYears: 54600000 / LIGHT_YEAR_IN_KM,
+				description: "最も近い時",
+				icon: "🔴",
+				timeLightSpeed: "3分",
+				lifeEventComparison: "カップ麺の待ち時間",
+				categoryClass: "category-solar"
+			},
+			{
+				id: 6,
+				name: "地球-木星",
+				category: "太陽系",
+				distanceKm: 628730000,
+				distanceLightYears: 628730000 / LIGHT_YEAR_IN_KM,
+				description: "太陽系最大の惑星",
+				icon: "🪐",
+				timeLightSpeed: "35分",
+				lifeEventComparison: "ランチタイム 約1回分",
+				categoryClass: "category-solar"
+			},
+			{
+				id: 7,
+				name: "地球-海王星",
+				category: "太陽系",
+				distanceKm: 4351400000,
+				distanceLightYears: 4351400000 / LIGHT_YEAR_IN_KM,
+				description: "太陽系最も遠い惑星",
+				icon: "🔵",
+				timeLightSpeed: "4時間",
+				lifeEventComparison: "映画鑑賞 約2本分",
+				categoryClass: "category-solar"
+			},
+			{
+				id: 8,
+				name: "太陽系の直径",
+				category: "太陽系",
+				distanceKm: 1.2e13,
+				distanceLightYears: 1.2e13 / LIGHT_YEAR_IN_KM,
+				description: "オールトの雲まで",
+				icon: "⭕",
+				timeLightSpeed: "約13時間",
+				lifeEventComparison: "睡眠時間 約2晩分",
+				categoryClass: "category-solar"
+			},
+			{
+				id: 9,
+				name: "太陽-プロキシマ・ケンタウリ",
+				category: "恒星間",
+				distanceKm: 4.01e13,
+				distanceLightYears: 4.24,
+				description: "最も近い恒星",
+				icon: "⭐",
+				timeLightSpeed: "4.24年",
+				lifeEventComparison: "大学生活 約1回分",
+				categoryClass: "category-star"
+			},
+			{
+				id: 10,
+				name: "太陽-シリウス",
+				category: "恒星間",
+				distanceKm: 8.14e13,
+				distanceLightYears: 8.6,
+				description: "最も明るく見える恒星",
+				icon: "✨",
+				timeLightSpeed: "8.6年",
+				lifeEventComparison: "小学校低学年 約3年間",
+				categoryClass: "category-star"
+			},
+			{
+				id: 11,
+				name: "太陽-ベテルギウス",
+				category: "恒星間",
+				distanceKm: 6.43e15,
+				distanceLightYears: 680,
+				description: "オリオン座の赤色超巨星",
+				icon: "🔴",
+				timeLightSpeed: "680年",
+				lifeEventComparison: "人生 約10回分",
+				categoryClass: "category-star"
+			},
+			{
+				id: 12,
+				name: "銀河系の直径",
+				category: "銀河系",
+				distanceKm: 9.46e17,
+				distanceLightYears: 100000,
+				description: "天の川銀河全体",
+				icon: "🌌",
+				timeLightSpeed: "10万年",
+				lifeEventComparison: "人類の歴史 約5回分",
+				categoryClass: "category-galaxy"
+			},
+			{
+				id: 13,
+				name: "銀河系中心まで",
+				category: "銀河系",
+				distanceKm: 2.53e17,
+				distanceLightYears: 26700,
+				description: "太陽系から銀河中心",
+				icon: "⚫",
+				timeLightSpeed: "2.67万年",
+				lifeEventComparison: "農耕文明の歴史 約2回分",
+				categoryClass: "category-galaxy"
+			},
+			{
+				id: 14,
+				name: "アンドロメダ銀河まで",
+				category: "銀河系外",
+				distanceKm: 2.37e19,
+				distanceLightYears: 2500000,
+				description: "最も近い大型銀河",
+				icon: "🌀",
+				timeLightSpeed: "250万年",
+				lifeEventComparison: "人類誕生からの全歴史",
+				categoryClass: "category-beyond"
+			},
+			{
+				id: 15,
+				name: "観測可能な宇宙の直径",
+				category: "銀河系外",
+				distanceKm: 8.8e23,
+				distanceLightYears: 93000000000,
+				description: "人類が観測できる限界",
+				icon: "♾️",
+				timeLightSpeed: "930億年",
+				lifeEventComparison: "宇宙誕生からの時間の6倍以上",
+				categoryClass: "category-beyond"
+			}
+		];
+
+		// グローバル変数
+		let currentMode = 'km';
+		let customMultiplier = 1;
+		let chartInstance = null;
+
+		// 初期化
+		document.addEventListener('DOMContentLoaded', function () {
+			updateAllDisplays();
+			createChart();
+			populateTable();
+		});
+
+		// モード切り替え
+		function switchMode(mode) {
+			currentMode = mode;
+
+			// ボタンのアクティブ状態を切り替え
+			document.querySelectorAll('.mode-btn').forEach(btn => {
+				btn.classList.remove('active');
+			});
+			document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
+
+			// レート表示を更新
+			updateRateDisplay();
+
+			// すべての表示を更新
+			updateAllDisplays();
+		}
+
+		// レート表示を更新
+		function updateRateDisplay() {
+			const rateText = currentMode === 'km'
+				? '1km = 1円'
+				: '1光年 = 1円';
+			document.getElementById('currentRateText').textContent = rateText;
+		}
+
+		// 距離をフォーマット（指数表記なし）
+		function formatDistance(distance, unit) {
+			if (unit === 'km') {
+				const kmUnits = [
+					{ value: 1e16, name: '京' },
+					{ value: 1e12, name: '兆' },
+					{ value: 1e8, name: '億' },
+					{ value: 1e4, name: '万' }
+				];
+
+				for (const u of kmUnits) {
+					if (distance >= u.value) {
+						return (distance / u.value).toFixed(2) + u.name + 'km';
+					}
+				}
+				return Math.round(distance).toLocaleString('ja-JP') + 'km';
+			} else {
+				const lyUnits = [
+					{ value: 1e8, name: '億' },
+					{ value: 1e4, name: '万' }
+				];
+
+				for (const u of lyUnits) {
+					if (distance >= u.value) {
+						return (distance / u.value).toFixed(2) + u.name + '光年';
+					}
+				}
+				return distance.toFixed(6) + '光年';
+			}
+		}
+
+		// 金額に換算
+		function convertToMoney(spaceObject) {
+			if (currentMode === 'km') {
+				return spaceObject.distanceKm * customMultiplier;
+			} else {
+				return spaceObject.distanceLightYears * customMultiplier;
+			}
+		}
+
+		// 金額をフォーマット
+		function formatMoney(amount) {
+			if (amount < 0.01) {
+				return '0.01円未満';
+			}
+
+			const units = [
+				{ value: 1e32, name: '溝' },
+				{ value: 1e28, name: '穣' },
+				{ value: 1e24, name: '秭' },
+				{ value: 1e20, name: '垓' },
+				{ value: 1e16, name: '京' },
+				{ value: 1e12, name: '兆' },
+				{ value: 1e8, name: '億' },
+				{ value: 1e4, name: '万' }
+			];
+
+			for (const unit of units) {
+				if (amount >= unit.value) {
+					return (amount / unit.value).toFixed(2) + unit.name + '円';
+				}
+			}
+
+			return Math.round(amount).toLocaleString('ja-JP') + '円';
+		}
+
+		// 金額をモノの数に換算
+		function formatMoneyAsObjects(amount) {
+			if (amount < 0.01) {
+				return '計測不可';
+			}
+
+			// 110兆円以上: 国家予算
+			if (amount >= PRICE_REFERENCES.japanBudget) {
+				const years = (amount / PRICE_REFERENCES.japanBudget).toFixed(2);
+				return `国家予算 ${years}年分`;
+			}
+			// 1000億～110兆円: 東京スカイツリー
+			if (amount >= PRICE_REFERENCES.tokyoSkytree) {
+				const count = Math.round(amount / PRICE_REFERENCES.tokyoSkytree);
+				return `東京スカイツリー ${count.toLocaleString('ja-JP')}本分`;
+			}
+			// 5億～1000億円: 高級マンション
+			if (amount >= PRICE_REFERENCES.luxuryMansion) {
+				const count = Math.round(amount / PRICE_REFERENCES.luxuryMansion);
+				return `高級マンション ${count.toLocaleString('ja-JP')}軒分`;
+			}
+			// 15万～5億円: iPhoneまたは軽自動車
+			if (amount >= PRICE_REFERENCES.iphone) {
+				if (amount >= PRICE_REFERENCES.keyCar * 2) {
+					const count = Math.round(amount / PRICE_REFERENCES.keyCar);
+					return `軽自動車 ${count.toLocaleString('ja-JP')}台分`;
+				} else {
+					const count = Math.round(amount / PRICE_REFERENCES.iphone);
+					return `iPhone ${count.toLocaleString('ja-JP')}台分`;
+				}
+			}
+			// 15万円未満: 缶ジュース
+			if (amount >= PRICE_REFERENCES.canJuice) {
+				const count = Math.round(amount / PRICE_REFERENCES.canJuice);
+				return `缶ジュース ${count.toLocaleString('ja-JP')}本分`;
+			}
+
+			// 150円未満
+			return formatMoney(amount);
+		}
+
+		// グラフを作成
+		function createChart() {
+			const ctx = document.getElementById('distanceChart').getContext('2d');
+
+			const data = spaceDistances.map(obj => ({
+				name: obj.name,
+				amount: convertToMoney(obj),
+				category: obj.category
+			}));
+
+			const colors = {
+				'地球周辺': '#4a90e2',
+				'太陽系': '#f39c12',
+				'恒星間': '#9b59b6',
+				'銀河系': '#e91e63',
+				'銀河系外': '#673ab7'
+			};
+
+			chartInstance = new Chart(ctx, {
+				type: 'bar',
+				data: {
+					labels: data.map(d => d.name),
+					datasets: [{
+						label: '金額（円）',
+						data: data.map(d => d.amount),
+						backgroundColor: data.map(d => colors[d.category]),
+						borderColor: data.map(d => colors[d.category]),
+						borderWidth: 2
+					}]
+				},
+				options: {
+					indexAxis: 'y',
+					responsive: true,
+					maintainAspectRatio: false,
+					plugins: {
+						legend: {
+							display: false
+						},
+						tooltip: {
+							callbacks: {
+								label: function (context) {
+									return formatMoney(context.parsed.x);
+								}
+							}
+						}
+					},
+					scales: {
+						x: {
+							type: 'logarithmic',
+							ticks: {
+								color: '#8899bb',
+								callback: function (value) {
+									return formatMoney(value);
+								}
+							},
+							grid: {
+								color: 'rgba(255, 255, 255, 0.1)'
+							}
+						},
+						y: {
+							ticks: {
+								color: '#8899bb'
+							},
+							grid: {
+								color: 'rgba(255, 255, 255, 0.1)'
+							}
+						}
+					}
+				}
+			});
+		}
+
+		// グラフを更新
+		function updateChart() {
+			if (!chartInstance) return;
+
+			const data = spaceDistances.map(obj => convertToMoney(obj));
+			chartInstance.data.datasets[0].data = data;
+			chartInstance.update('active');
+		}
+
+		// テーブルを生成
+		function populateTable() {
+			updateTable();
+		}
+
+		// テーブルを更新
+		function updateTable() {
+			const tbody = document.getElementById('tableBody');
+
+			tbody.innerHTML = spaceDistances.map(obj => {
+				const amount = convertToMoney(obj);
+				const distance = currentMode === 'km'
+					? formatDistance(obj.distanceKm, 'km')
+					: formatDistance(obj.distanceLightYears, 'ly');
+
+				return `
+                    <tr>
+                        <td><span class="category-badge ${obj.categoryClass}">${obj.category}</span></td>
+                        <td>${obj.icon} ${obj.name}</td>
+                        <td>${distance}</td>
+                        <td><strong>${formatMoney(amount)}</strong></td>
+                        <td>${formatMoneyAsObjects(amount)}</td>
+                        <td>${obj.timeLightSpeed}</td>
+                        <td>${obj.lifeEventComparison}</td>
+                    </tr>
+                `;
+			}).join('');
+		}
+
+		// テーブルのソート
+		let sortColumn = -1;
+		let sortAsc = true;
+
+		function sortTable(columnIndex) {
+			const table = document.getElementById('dataTable');
+			const tbody = table.querySelector('tbody');
+			const rows = Array.from(tbody.querySelectorAll('tr'));
+
+			if (sortColumn === columnIndex) {
+				sortAsc = !sortAsc;
+			} else {
+				sortColumn = columnIndex;
+				sortAsc = true;
+			}
+
+			rows.sort((a, b) => {
+				const aVal = a.cells[columnIndex].textContent.trim();
+				const bVal = b.cells[columnIndex].textContent.trim();
+
+				if (columnIndex === 3) { // 金額列
+					const aNum = convertToMoney(spaceDistances[rows.indexOf(a)]);
+					const bNum = convertToMoney(spaceDistances[rows.indexOf(b)]);
+					return sortAsc ? aNum - bNum : bNum - aNum;
+				}
+
+				return sortAsc
+					? aVal.localeCompare(bVal, 'ja')
+					: bVal.localeCompare(aVal, 'ja');
+			});
+
+			tbody.innerHTML = '';
+			rows.forEach(row => tbody.appendChild(row));
+		}
+
+		// すべての表示を更新
+		function updateAllDisplays() {
+			updateChart();
+			updateTable();
+		}
+
+		// デバウンス関数
+		function debounce(func, wait) {
+			let timeout;
+			return function executedFunction(...args) {
+				const later = () => {
+					clearTimeout(timeout);
+					func(...args);
+				};
+				clearTimeout(timeout);
+				timeout = setTimeout(later, wait);
+			};
+		}
+	</script>
+</body>
+
+</html>

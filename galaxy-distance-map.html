@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>銀河大きさ体感マップ</title>
+	<meta name="description" content="「銀河大きさ体感マップ」は銀河の大きさと他の銀河までの距離を縮尺して地図上に表示します。宇宙空間の広大さを視覚的に理解することができます。">
+	<meta property="og:title" content="銀河大きさ体感マップ">
+	<meta property="og:description" content="「銀河大きさ体感マップ」は銀河の大きさと他の銀河までの距離を縮尺して地図上に表示します。宇宙空間の広大さを視覚的に理解することができます。">
+
+	<!-- Google Analytics -->
+	<script async src="https://www.googletagmanager.com/gtag/js?id=G-89GN3KL35R"></script>
+	<script>
+		window.dataLayer = window.dataLayer || [];
+		function gtag() { dataLayer.push(arguments); }
+		gtag('js', new Date());
+		gtag('config', 'G-89GN3KL35R');
+	</script>
+
+	<!-- MapLibre GL JS -->
+	<script src="https://unpkg.com/maplibre-gl@5.0.0/dist/maplibre-gl.js"></script>
+	<link href="https://unpkg.com/maplibre-gl@5.0.0/dist/maplibre-gl.css" rel="stylesheet" />
+
+	<!-- Turf.js -->
+	<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js"></script>
+
+	<style>
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+
+		body {
+			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+		}
+
+		#map {
+			position: absolute;
+			top: 0;
+			bottom: 0;
+			width: 100%;
+		}
+
+		.control-panel {
+			position: absolute;
+			top: 20px;
+			left: 20px;
+			background: white;
+			padding: 20px;
+			border-radius: 8px;
+			box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+			z-index: 1000;
+			min-width: 300px;
+		}
+
+		.control-panel h2 {
+			margin-bottom: 15px;
+			font-size: 18px;
+			color: #333;
+		}
+
+		.input-group {
+			margin-bottom: 15px;
+		}
+
+		.input-group label {
+			display: block;
+			margin-bottom: 5px;
+			font-size: 14px;
+			color: #555;
+		}
+
+		.input-group input {
+			width: 100%;
+			padding: 8px;
+			border: 1px solid #ddd;
+			border-radius: 4px;
+			font-size: 14px;
+		}
+
+		.input-group input:focus {
+			outline: none;
+			border-color: #4CAF50;
+		}
+
+		.update-btn {
+			width: 100%;
+			padding: 10px;
+			background-color: #4CAF50;
+			color: white;
+			border: none;
+			border-radius: 4px;
+			font-size: 16px;
+			cursor: pointer;
+			transition: background-color 0.3s;
+		}
+
+		.update-btn:hover {
+			background-color: #45a049;
+		}
+
+		.map-selector {
+			margin-bottom: 15px;
+		}
+
+		.map-selector label {
+			display: block;
+			margin-bottom: 5px;
+			font-size: 14px;
+			color: #555;
+		}
+
+		.map-selector select {
+			width: 100%;
+			padding: 8px;
+			border: 1px solid #ddd;
+			border-radius: 4px;
+			font-size: 14px;
+			background-color: white;
+			cursor: pointer;
+		}
+
+		.map-selector select:focus {
+			outline: none;
+			border-color: #4CAF50;
+		}
+
+		.legend {
+			position: absolute;
+			bottom: 30px;
+			right: 20px;
+			background: white;
+			padding: 15px;
+			border-radius: 8px;
+			box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+			z-index: 1000;
+		}
+
+		.legend h3 {
+			margin-bottom: 10px;
+			font-size: 14px;
+			color: #333;
+		}
+
+		.legend-item {
+			display: flex;
+			align-items: center;
+			margin-bottom: 5px;
+			font-size: 12px;
+		}
+
+		.legend-color {
+			width: 20px;
+			height: 3px;
+			margin-right: 8px;
+			border-radius: 2px;
+		}
+
+		.info-text {
+			font-size: 12px;
+			color: #666;
+			margin-top: 10px;
+		}
+
+		.out-of-range {
+			position: absolute;
+			top: 20px;
+			right: 20px;
+			background: white;
+			padding: 15px;
+			border-radius: 8px;
+			box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+			z-index: 1000;
+			max-width: 300px;
+		}
+
+		.out-of-range h3 {
+			margin-bottom: 10px;
+			font-size: 14px;
+			color: #333;
+		}
+
+		.out-of-range-item {
+			font-size: 12px;
+			color: #666;
+			margin-bottom: 5px;
+			padding: 5px;
+			border-left: 3px solid;
+			padding-left: 8px;
+		}
+
+		.out-of-range-empty {
+			font-size: 12px;
+			color: #999;
+			font-style: italic;
+		}
+
+		.panel-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: 10px;
+		}
+
+		.panel-header h2,
+		.panel-header h3 {
+			margin-bottom: 0;
+		}
+
+		.toggle-btn {
+			background: none;
+			border: none;
+			font-size: 18px;
+			cursor: pointer;
+			padding: 5px;
+			color: #666;
+			transition: color 0.3s;
+		}
+
+		.toggle-btn:hover {
+			color: #333;
+		}
+
+		.panel-content {
+			transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+			overflow: hidden;
+		}
+
+		.panel-content.collapsed {
+			max-height: 0 !important;
+			opacity: 0;
+			margin: 0;
+			padding: 0;
+		}
+
+		.fullscreen-btn {
+			position: absolute;
+			bottom: 30px;
+			left: 20px;
+			background: white;
+			border: none;
+			border-radius: 4px;
+			padding: 10px 15px;
+			font-size: 20px;
+			cursor: pointer;
+			box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+			z-index: 1000;
+			transition: background-color 0.3s;
+		}
+
+		.fullscreen-btn:hover {
+			background-color: #f0f0f0;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="map"></div>
+
+	<button class="fullscreen-btn" onclick="toggleFullscreen()" title="全画面モード">⛶</button>
+
+	<div class="control-panel">
+		<div class="panel-header">
+			<h2>🌌 銀河系大きさ体感マップ</h2>
+			<button class="toggle-btn" onclick="togglePanel('controlContent')" title="パネルを折りたたむ">▼</button>
+		</div>
+
+		<div id="controlContent" class="panel-content">
+			<div class="map-selector">
+				<label for="mapStyle">背景地図:</label>
+				<select id="mapStyle" onchange="changeMapStyle()">
+					<option value="osm">OpenStreetMap</option>
+					<option value="gsi-std">地理院地図(標準)</option>
+					<option value="gsi-pale">地理院地図(淡色)</option>
+					<option value="gsi-blank">地理院地図(白地図)</option>
+					<option value="gsi-photo">地理院地図(衛星写真)</option>
+				</select>
+			</div>
+
+			<div class="input-group">
+				<label for="milkyWayDiameter">銀河系の直径 (km):</label>
+				<input type="number" id="milkyWayDiameter" value="10" step="1" min="0.1">
+			</div>
+
+			<button class="update-btn" onclick="updateGalaxies()">描画更新</button>
+
+			<div class="info-text">
+				ℹ️ 銀河系マーカーをドラッグして位置を変更できます
+			</div>
+		</div>
+	</div>
+
+	<div class="out-of-range" id="outOfRange">
+		<div class="panel-header">
+			<h3>📏 描画範囲外の銀河</h3>
+			<button class="toggle-btn" onclick="togglePanel('outOfRangeContent')" title="パネルを折りたたむ">▼</button>
+		</div>
+		<div id="outOfRangeContent" class="panel-content">
+			<div id="outOfRangeList">
+				<div class="out-of-range-empty">情報なし</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="legend">
+		<div class="panel-header">
+			<h3>銀河・銀河団</h3>
+			<button class="toggle-btn" onclick="togglePanel('legendContent')" title="パネルを折りたたむ">▼</button>
+		</div>
+		<div id="legendContent" class="panel-content">
+			<div class="legend-item">
+				<div class="legend-color" style="background-color: #FF6B9D;"></div>
+				<span>大マゼラン雲 (16.3万光年)</span>
+			</div>
+			<div class="legend-item">
+				<div class="legend-color" style="background-color: #9D6BFF;"></div>
+				<span>小マゼラン雲 (20万光年)</span>
+			</div>
+			<div class="legend-item">
+				<div class="legend-color" style="background-color: #00CED1;"></div>
+				<span>アンドロメダ銀河 (254万光年)</span>
+			</div>
+			<div class="legend-item">
+				<div class="legend-color" style="background-color: #FF8C00;"></div>
+				<span>さんかく座銀河 (273万光年)</span>
+			</div>
+			<div class="legend-item">
+				<div class="legend-color" style="background-color: #DC143C;"></div>
+				<span>ケンタウルス座A (1370万光年)</span>
+			</div>
+			<div class="legend-item">
+				<div class="legend-color" style="background-color: #9370DB;"></div>
+				<span>おとめ座銀河団 (5350万光年)</span>
+			</div>
+			<div class="legend-item">
+				<div class="legend-color" style="background-color: #4682B4;"></div>
+				<span>かみのけ座銀河団 (3.2億光年)</span>
+			</div>
+			<div class="legend-item">
+				<div class="legend-color" style="background-color: #2E8B57;"></div>
+				<span>おおぐま座銀河団 (3.9億光年)</span>
+			</div>
+		</div>
+	</div>
+
+	<script>
+		// ========== 定数定義 ==========
+		// 銀河系の実際の直径（光年）
+		const MILKY_WAY_DIAMETER_LY = 105700;
+
+		// 1光年（km）
+		const LIGHT_YEAR_IN_KM = 9460730472580.8;
+
+		// 地球の赤道周長（km）
+		const EARTH_CIRCUMFERENCE_KM = 40075;
+
+		// 銀河データ: 名前、距離（光年）、直径（光年）、色、種別、発見年
+		const GALAXIES = [
+			{ name: '大マゼラン雲', distanceLY: 163000, diameterLY: 14000, color: '#FF6B9D', type: 'dwarf', discoveryYear: null },
+			{ name: '小マゼラン雲', distanceLY: 200000, diameterLY: 7000, color: '#9D6BFF', type: 'dwarf', discoveryYear: null },
+			{ name: 'アンドロメダ銀河', distanceLY: 2537000, diameterLY: 220000, color: '#00CED1', type: 'spiral', discoveryYear: 964 },
+			{ name: 'さんかく座銀河', distanceLY: 2730000, diameterLY: 60000, color: '#FF8C00', type: 'spiral', discoveryYear: 1784 },
+			{ name: 'ケンタウルス座A', distanceLY: 13700000, diameterLY: 60000, color: '#DC143C', type: 'elliptical', discoveryYear: 1826 },
+			{ name: 'おとめ座銀河団', distanceLY: 53500000, diameterLY: 0, color: '#9370DB', type: 'cluster', discoveryYear: 1781 },
+			{ name: 'かみのけ座銀河団', distanceLY: 320000000, diameterLY: 0, color: '#4682B4', type: 'cluster', discoveryYear: 1785 },
+			{ name: 'おおぐま座銀河団', distanceLY: 390000000, diameterLY: 0, color: '#2E8B57', type: 'cluster', discoveryYear: 1900 }
+		];
+
+		// 初期中心座標: 和歌山県 四季の郷公園
+		const INITIAL_CENTER = [135.2597718, 34.2161407]; // [経度, 緯度]
+
+		// ========== グローバル変数 ==========
+		let map;
+		let milkyWayMarker;
+		let milkyWayCoordinates = INITIAL_CENTER;
+
+		// 地図スタイル定義
+		const MAP_STYLES = {
+			'osm': {
+				version: 8,
+				glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+				sources: {
+					'osm': {
+						type: 'raster',
+						tiles: [
+							'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+							'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+							'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
+						],
+						tileSize: 256,
+						attribution: '© OpenStreetMap contributors'
+					}
+				},
+				layers: [{
+					id: 'osm',
+					type: 'raster',
+					source: 'osm',
+					minzoom: 0,
+					maxzoom: 19
+				}]
+			},
+			'gsi-std': {
+				version: 8,
+				glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+				sources: {
+					'gsi-std': {
+						type: 'raster',
+						tiles: [
+							'https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png'
+						],
+						tileSize: 256,
+						attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>'
+					}
+				},
+				layers: [{
+					id: 'gsi-std',
+					type: 'raster',
+					source: 'gsi-std',
+					minzoom: 0,
+					maxzoom: 18
+				}]
+			},
+			'gsi-pale': {
+				version: 8,
+				glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+				sources: {
+					'gsi-pale': {
+						type: 'raster',
+						tiles: [
+							'https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png'
+						],
+						tileSize: 256,
+						attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>'
+					}
+				},
+				layers: [{
+					id: 'gsi-pale',
+					type: 'raster',
+					source: 'gsi-pale',
+					minzoom: 0,
+					maxzoom: 18
+				}]
+			},
+			'gsi-blank': {
+				version: 8,
+				glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+				sources: {
+					'gsi-blank': {
+						type: 'raster',
+						tiles: [
+							'https://cyberjapandata.gsi.go.jp/xyz/blank/{z}/{x}/{y}.png'
+						],
+						tileSize: 256,
+						attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>'
+					}
+				},
+				layers: [{
+					id: 'gsi-blank-layer',
+					type: 'raster',
+					source: 'gsi-blank',
+					minzoom: 0,
+					maxzoom: 14
+				}]
+			},
+			'gsi-photo': {
+				version: 8,
+				glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+				sources: {
+					'gsi-photo': {
+						type: 'raster',
+						tiles: [
+							'https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg'
+						],
+						tileSize: 256,
+						attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>'
+					}
+				},
+				layers: [{
+					id: 'gsi-photo',
+					type: 'raster',
+					source: 'gsi-photo',
+					minzoom: 0,
+					maxzoom: 18
+				}]
+			}
+		};
+
+		// ========== 種別の日本語名 ==========
+		const TYPE_NAMES = {
+			'dwarf': '矮小銀河',
+			'spiral': '渦巻銀河',
+			'elliptical': '楕円銀河',
+			'cluster': '銀河団'
+		};
+
+		// ========== 光の到達時間の計算 ==========
+		function calculateLightTravelTime(distanceLY) {
+			if (distanceLY < 1) {
+				return `${(distanceLY * 365.25).toFixed(2)}日`;
+			} else if (distanceLY < 1000) {
+				return `${distanceLY.toFixed(2)}年`;
+			} else if (distanceLY < 1000000) {
+				return `${(distanceLY / 1000).toFixed(2)}千年`;
+			} else if (distanceLY < 1000000000) {
+				return `${(distanceLY / 1000000).toFixed(2)}百万年`;
+			} else {
+				return `${(distanceLY / 1000000000).toFixed(2)}億年`;
+			}
+		}
+
+		// ========== 初期化 ==========
+		function init() {
+			// 地図の初期化
+			map = new maplibregl.Map({
+				container: 'map',
+				style: MAP_STYLES['osm'],
+				center: INITIAL_CENTER,
+				zoom: 14
+			});
+
+			// 地図の読み込み完了後
+			map.on('load', () => {
+				// 銀河系マーカーの作成
+				createMilkyWayMarker();
+
+				// 初期描画
+				updateGalaxies();
+			});
+
+			// Enterキーで描画更新
+			document.getElementById('milkyWayDiameter').addEventListener('keypress', (e) => {
+				if (e.key === 'Enter') updateGalaxies();
+			});
+		}
+
+		// ========== 銀河系マーカーの作成 ==========
+		function createMilkyWayMarker() {
+			// カスタムマーカー要素の作成
+			const el = document.createElement('div');
+			el.style.width = '40px';
+			el.style.height = '40px';
+			el.style.borderRadius = '50%';
+			el.style.background = 'radial-gradient(circle, #FFD700, #FFA500)';
+			el.style.border = '3px solid white';
+			el.style.boxShadow = '0 0 20px rgba(255, 215, 0, 0.8)';
+			el.style.cursor = 'move';
+
+			// マーカーの作成
+			milkyWayMarker = new maplibregl.Marker({
+				element: el,
+				draggable: true
+			})
+				.setLngLat(milkyWayCoordinates)
+				.addTo(map);
+
+			// ドラッグ終了時のイベント
+			milkyWayMarker.on('dragend', () => {
+				milkyWayCoordinates = milkyWayMarker.getLngLat().toArray();
+				updateGalaxies();
+			});
+		}
+
+		// ========== 銀河の更新・描画 ==========
+		function updateGalaxies() {
+			const milkyWayDiameterKm = parseFloat(document.getElementById('milkyWayDiameter').value);
+
+			if (isNaN(milkyWayDiameterKm) || milkyWayDiameterKm <= 0) {
+				alert('有効な銀河系の直径を入力してください');
+				return;
+			}
+
+			// 縮尺係数の計算
+			const actualMilkyWayDiameterKm = MILKY_WAY_DIAMETER_LY * LIGHT_YEAR_IN_KM;
+			const scale = milkyWayDiameterKm / actualMilkyWayDiameterKm;
+
+			console.log(`縮尺: 銀河系 ${milkyWayDiameterKm} km`);
+			console.log(`縮尺係数: ${scale.toExponential(2)}`);
+
+			// 範囲外の銀河リストをクリア
+			window.outOfRangeGalaxies = [];
+
+			// 既存のレイヤーとソースを削除
+			GALAXIES.forEach(galaxy => {
+				const distanceLayerId = `distance-${galaxy.name}`;
+				const distanceSourceId = `distance-source-${galaxy.name}`;
+				const galaxyLayerId = `galaxy-${galaxy.name}`;
+				const galaxySourceId = `galaxy-source-${galaxy.name}`;
+				const labelLayerId = `label-${galaxy.name}`;
+				const labelSourceId = `label-source-${galaxy.name}`;
+
+				if (map.getLayer(distanceLayerId)) {
+					map.removeLayer(distanceLayerId);
+				}
+				if (map.getSource(distanceSourceId)) {
+					map.removeSource(distanceSourceId);
+				}
+				if (map.getLayer(galaxyLayerId)) {
+					map.removeLayer(galaxyLayerId);
+				}
+				if (map.getSource(galaxySourceId)) {
+					map.removeSource(galaxySourceId);
+				}
+				if (map.getLayer(labelLayerId)) {
+					map.removeLayer(labelLayerId);
+				}
+				if (map.getSource(labelSourceId)) {
+					map.removeSource(labelSourceId);
+				}
+			});
+
+			// 銀河系本体のレイヤーも削除
+			if (map.getLayer('milky-way-body')) {
+				map.removeLayer('milky-way-body');
+			}
+			if (map.getSource('milky-way-body-source')) {
+				map.removeSource('milky-way-body-source');
+			}
+
+			// 銀河系本体を描画
+			const milkyWayRadiusKm = milkyWayDiameterKm / 2;
+			const milkyWayCircle = turf.circle(milkyWayCoordinates, milkyWayRadiusKm, {
+				steps: 128,
+				units: 'kilometers'
+			});
+
+			map.addSource('milky-way-body-source', {
+				type: 'geojson',
+				data: milkyWayCircle
+			});
+
+			map.addLayer({
+				id: 'milky-way-body',
+				type: 'fill',
+				source: 'milky-way-body-source',
+				paint: {
+					'fill-color': '#FFD700',
+					'fill-opacity': 0.4
+				}
+			});
+
+			// 各銀河の距離円と銀河本体を描画
+			GALAXIES.forEach(galaxy => {
+				// 銀河までの実際の距離（km）
+				const actualDistanceKm = galaxy.distanceLY * LIGHT_YEAR_IN_KM;
+
+				// 地図上での距離（km）
+				const mapDistanceKm = actualDistanceKm * scale;
+
+				// 距離が20,000kmを超える場合はスキップし、情報を記録
+				if (mapDistanceKm > 20000) {
+					const timesAroundEarth = mapDistanceKm / EARTH_CIRCUMFERENCE_KM;
+					console.log(`${galaxy.name}: 距離 ${mapDistanceKm.toFixed(2)} km (地球${timesAroundEarth.toFixed(2)}周分) - 表示範囲外のためスキップ`);
+
+					// 範囲外の銀河情報を保存
+					window.outOfRangeGalaxies.push({
+						name: galaxy.name,
+						color: galaxy.color,
+						distanceKm: mapDistanceKm,
+						timesAroundEarth: timesAroundEarth
+					});
+
+					return;
+				}
+
+				// 距離円を生成
+				const distanceCircle = turf.circle(milkyWayCoordinates, mapDistanceKm, {
+					steps: 128,
+					units: 'kilometers'
+				});
+
+				// 銀河の位置を計算（距離円上の右側、90度の位置）
+				const galaxyPosition = turf.destination(milkyWayCoordinates, mapDistanceKm, 90, { units: 'kilometers' });
+
+				const distanceSourceId = `distance-source-${galaxy.name}`;
+				const distanceLayerId = `distance-${galaxy.name}`;
+
+				// 距離円のソースとレイヤーを追加
+				map.addSource(distanceSourceId, {
+					type: 'geojson',
+					data: distanceCircle
+				});
+
+				// 距離円の線幅と透明度を種別によって調整
+				const lineWidth = galaxy.type === 'dwarf' ? 3 : (galaxy.type === 'cluster' ? 5 : 4);
+				const lineOpacity = galaxy.distanceLY <= 10000000 ? 0.7 : 0.5;
+				const lineDasharray = galaxy.type === 'cluster' ? [10, 10] : null;
+
+				const layerPaint = {
+					'line-color': galaxy.color,
+					'line-width': lineWidth,
+					'line-opacity': lineOpacity
+				};
+				if (lineDasharray) {
+					layerPaint['line-dasharray'] = lineDasharray;
+				}
+
+				map.addLayer({
+					id: distanceLayerId,
+					type: 'line',
+					source: distanceSourceId,
+					paint: layerPaint
+				});
+
+				// 距離円のクリックイベント
+				map.on('click', distanceLayerId, (e) => {
+					const coordinates = e.lngLat;
+					const lightTime = calculateLightTravelTime(galaxy.distanceLY);
+					const distanceTrillionKm = (actualDistanceKm / 1000000000000).toFixed(2);
+
+					let popupContent = `
+						<div style="font-family: 'Segoe UI', sans-serif; min-width: 250px;">
+							<h3 style="margin: 0 0 10px 0; color: ${galaxy.color}; font-size: 16px;">
+								${galaxy.name}
+							</h3>
+							<div style="font-size: 13px; line-height: 1.6;">
+								<p style="margin: 5px 0;"><strong>距離:</strong> ${galaxy.distanceLY.toLocaleString('ja-JP')} 光年</p>
+								<p style="margin: 5px 0;"><strong>実際の距離:</strong> ${distanceTrillionKm} 兆km</p>
+								<hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
+								<p style="margin: 5px 0; font-weight: bold; color: #333;">🚀 光の到達時間:</p>
+								<p style="margin: 3px 0 3px 15px;">💡 光速: <strong>${lightTime}</strong></p>
+								<hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
+								<p style="margin: 5px 0;"><strong>🔭 種別:</strong> ${TYPE_NAMES[galaxy.type]}</p>
+					`;
+
+					if (galaxy.discoveryYear) {
+						popupContent += `<p style="margin: 5px 0;"><strong>📅 発見年:</strong> ${galaxy.discoveryYear}年</p>`;
+					}
+
+					popupContent += `
+								<hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
+								<p style="margin: 5px 0;">
+									<a href="https://www.google.com/maps?q=${coordinates.lat},${coordinates.lng}" 
+									   target="_blank" 
+									   style="color: #4CAF50; text-decoration: none;">
+										📍 Google Mapsでこの場所を見る
+									</a>
+								</p>
+							</div>
+						</div>
+					`;
+
+					new maplibregl.Popup({
+						maxWidth: '350px'
+					})
+						.setLngLat(coordinates)
+						.setHTML(popupContent)
+						.addTo(map);
+				});
+
+				// マウスカーソルをポインターに変更
+				map.on('mouseenter', distanceLayerId, () => {
+					map.getCanvas().style.cursor = 'pointer';
+				});
+
+				map.on('mouseleave', distanceLayerId, () => {
+					map.getCanvas().style.cursor = '';
+				});
+
+				// 銀河本体を描画（直径が指定されている場合）
+				if (galaxy.diameterLY > 0) {
+					const actualGalaxyDiameterKm = galaxy.diameterLY * LIGHT_YEAR_IN_KM;
+					const mapGalaxyDiameterKm = actualGalaxyDiameterKm * scale;
+					const mapGalaxyRadiusKm = mapGalaxyDiameterKm / 2;
+
+					// 銀河の円を生成
+					const galaxyCircle = turf.circle(galaxyPosition.geometry.coordinates, mapGalaxyRadiusKm, {
+						steps: 64,
+						units: 'kilometers'
+					});
+
+					const galaxySourceId = `galaxy-source-${galaxy.name}`;
+					const galaxyLayerId = `galaxy-${galaxy.name}`;
+
+					map.addSource(galaxySourceId, {
+						type: 'geojson',
+						data: galaxyCircle
+					});
+
+					map.addLayer({
+						id: galaxyLayerId,
+						type: 'fill',
+						source: galaxySourceId,
+						paint: {
+							'fill-color': galaxy.color,
+							'fill-opacity': 0.6
+						}
+					});
+
+					// 銀河本体のクリックイベント
+					map.on('click', galaxyLayerId, (e) => {
+						const coordinates = e.lngLat;
+						const lightTime = calculateLightTravelTime(galaxy.distanceLY);
+						const distanceTrillionKm = (actualDistanceKm / 1000000000000).toFixed(2);
+
+						let popupContent = `
+							<div style="font-family: 'Segoe UI', sans-serif; min-width: 250px;">
+								<h3 style="margin: 0 0 10px 0; color: ${galaxy.color}; font-size: 16px;">
+									${galaxy.name}
+								</h3>
+								<div style="font-size: 13px; line-height: 1.6;">
+									<p style="margin: 5px 0;"><strong>直径:</strong> ${galaxy.diameterLY.toLocaleString('ja-JP')} 光年</p>
+									<p style="margin: 5px 0;"><strong>距離:</strong> ${galaxy.distanceLY.toLocaleString('ja-JP')} 光年</p>
+									<p style="margin: 5px 0;"><strong>銀河系からの距離:</strong> ${distanceTrillionKm} 兆km</p>
+									<hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
+									<p style="margin: 5px 0; font-weight: bold; color: #333;">🚀 銀河系からの光の到達時間:</p>
+									<p style="margin: 3px 0 3px 15px;">💡 光速: <strong>${lightTime}</strong></p>
+									<hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
+									<p style="margin: 5px 0;"><strong>🔭 種別:</strong> ${TYPE_NAMES[galaxy.type]}</p>
+						`;
+
+						if (galaxy.discoveryYear) {
+							popupContent += `<p style="margin: 5px 0;"><strong>📅 発見年:</strong> ${galaxy.discoveryYear}年</p>`;
+						}
+
+						popupContent += `
+									<hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
+									<p style="margin: 5px 0;">
+										<a href="https://www.google.com/maps?q=${coordinates.lat},${coordinates.lng}" 
+										   target="_blank" 
+										   style="color: #4CAF50; text-decoration: none;">
+											📍 Google Mapsでこの場所を見る
+										</a>
+									</p>
+								</div>
+							</div>
+						`;
+
+						new maplibregl.Popup({
+							maxWidth: '350px'
+						})
+							.setLngLat(coordinates)
+							.setHTML(popupContent)
+							.addTo(map);
+					});
+
+					// マウスカーソルをポインターに変更
+					map.on('mouseenter', galaxyLayerId, () => {
+						map.getCanvas().style.cursor = 'pointer';
+					});
+
+					map.on('mouseleave', galaxyLayerId, () => {
+						map.getCanvas().style.cursor = '';
+					});
+				}
+
+				// 銀河ラベルの追加
+				const labelSourceId = `label-source-${galaxy.name}`;
+				const labelLayerId = `label-${galaxy.name}`;
+
+				// ラベル用のポイントを作成
+				const labelPoint = turf.point(galaxyPosition.geometry.coordinates, {
+					name: galaxy.name
+				});
+
+				map.addSource(labelSourceId, {
+					type: 'geojson',
+					data: labelPoint
+				});
+
+				// ラベルサイズを種別によって調整
+				const textSize = galaxy.type === 'dwarf' ? 16 : (galaxy.type === 'cluster' ? 20 : 18);
+
+				map.addLayer({
+					id: labelLayerId,
+					type: 'symbol',
+					source: labelSourceId,
+					layout: {
+						'text-field': ['get', 'name'],
+						'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+						'text-size': textSize,
+						'text-offset': [0, -2.5],
+						'text-anchor': 'bottom'
+					},
+					paint: {
+						'text-color': galaxy.color,
+						'text-halo-color': '#ffffff',
+						'text-halo-width': 3
+					}
+				});
+
+				console.log(`${galaxy.name}: 距離 ${mapDistanceKm.toFixed(2)} km`);
+			});
+
+			// 範囲外の銀河リストを更新
+			updateOutOfRangeList();
+		}
+
+		// ========== 描画範囲外の銀河リストを更新 ==========
+		function updateOutOfRangeList() {
+			const listElement = document.getElementById('outOfRangeList');
+
+			if (!window.outOfRangeGalaxies || window.outOfRangeGalaxies.length === 0) {
+				listElement.innerHTML = '<div class="out-of-range-empty">すべての銀河が表示範囲内です</div>';
+				return;
+			}
+
+			let html = '';
+			window.outOfRangeGalaxies.forEach(galaxy => {
+				html += `<div class="out-of-range-item" style="border-left-color: ${galaxy.color};">`;
+				html += `<strong>${galaxy.name}</strong><br>`;
+				html += `距離: ${galaxy.distanceKm.toLocaleString('ja-JP', { maximumFractionDigits: 0 })} km<br>`;
+				html += `地球 <strong>${galaxy.timesAroundEarth.toFixed(1)}</strong> 周分`;
+				html += `</div>`;
+			});
+
+			listElement.innerHTML = html;
+		}
+
+		// ========== 地図スタイル切り替え ==========
+		function changeMapStyle() {
+			const selectedStyle = document.getElementById('mapStyle').value;
+
+			// 現在の中心座標とズームレベルを保存
+			const currentCenter = map.getCenter();
+			const currentZoom = map.getZoom();
+			const currentMilkyWayCoords = milkyWayCoordinates;
+
+			// 地図スタイルを変更
+			map.setStyle(MAP_STYLES[selectedStyle]);
+
+			// スタイル読み込み完了後に銀河を再描画
+			map.once('styledata', () => {
+				// 中心座標とズームを復元
+				map.setCenter(currentCenter);
+				map.setZoom(currentZoom);
+
+				// 銀河系の位置を復元
+				milkyWayCoordinates = currentMilkyWayCoords;
+				if (milkyWayMarker) {
+					milkyWayMarker.setLngLat(milkyWayCoordinates);
+				}
+
+				// 銀河を再描画
+				updateGalaxies();
+			});
+		}
+
+		// ========== 全画面モード切り替え ==========
+		function toggleFullscreen() {
+			if (!document.fullscreenElement) {
+				// 全画面モードに入る
+				document.documentElement.requestFullscreen().catch(err => {
+					alert(`全画面モードに切り替えできませんでした: ${err.message}`);
+				});
+			} else {
+				// 全画面モードを終了
+				if (document.exitFullscreen) {
+					document.exitFullscreen();
+				}
+			}
+		}
+
+		// 全画面モードの変化を監視してボタンアイコンを更新
+		document.addEventListener('fullscreenchange', () => {
+			const btn = document.querySelector('.fullscreen-btn');
+			if (document.fullscreenElement) {
+				btn.textContent = '❌'; // 全画面中は終了アイコン
+				btn.title = '全画面モードを終了';
+			} else {
+				btn.textContent = '⛶'; // 通常時は全画面アイコン
+				btn.title = '全画面モード';
+			}
+		});
+
+		// ========== パネルの折りたたみ ==========
+		function togglePanel(contentId) {
+			const content = document.getElementById(contentId);
+			const button = event.target;
+
+			if (content.classList.contains('collapsed')) {
+				content.classList.remove('collapsed');
+				content.style.maxHeight = content.scrollHeight + 'px';
+				button.textContent = '▼';
+			} else {
+				content.style.maxHeight = content.scrollHeight + 'px';
+				setTimeout(() => {
+					content.classList.add('collapsed');
+				}, 10);
+				button.textContent = '▶';
+			}
+		}
+
+		// ページ読み込み時に各パネルの初期maxHeightを設定
+		window.addEventListener('load', () => {
+			init();
+
+			// 各パネルコンテンツの初期maxHeightを設定
+			['controlContent', 'outOfRangeContent', 'legendContent'].forEach(id => {
+				const element = document.getElementById(id);
+				if (element) {
+					element.style.maxHeight = element.scrollHeight + 'px';
+				}
+			});
+		});
+	</script>
+</body>
+
+</html>
