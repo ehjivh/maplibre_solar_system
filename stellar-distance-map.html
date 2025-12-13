@@ -286,7 +286,10 @@
 <body>
 	<div id="map"></div>
 
+	<a href="index.html" class="home-link" title="トップページに戻る">🏠 ホーム</a>
+
 	<button class="fullscreen-btn" onclick="toggleFullscreen()" title="全画面モード">⛶</button>
+	<button class="location-btn" onclick="setCurrentLocation()" title="現在地を中心にする">📍</button>
 
 	<div class="control-panel">
 		<div class="panel-header">
@@ -905,6 +908,77 @@
 				btn.title = '全画面モード';
 			}
 		});
+
+		// ========== 現在地を中心にする ==========
+		function setCurrentLocation() {
+			const locationBtn = document.querySelector('.location-btn');
+
+			if (!navigator.geolocation) {
+				alert('お使いのブラウザは位置情報機能に対応していません。');
+				return;
+			}
+
+			// ボタンを無効化
+			locationBtn.disabled = true;
+			locationBtn.textContent = '📡';
+
+			navigator.geolocation.getCurrentPosition(
+				// 成功時
+				(position) => {
+					const { latitude, longitude } = position.coords;
+
+					// 中心位置を現在地に更新
+					sunCoordinates = [longitude, latitude];
+
+					// マーカーの位置を更新
+					if (sunMarker) {
+						sunMarker.setLngLat(sunCoordinates);
+					}
+
+					// 地図の中心を現在地に移動
+					map.flyTo({
+						center: sunCoordinates,
+						zoom: 14,
+						duration: 2000
+					});
+
+					// 描画を更新
+					updateStars();
+
+					// ボタンを元に戻す
+					locationBtn.disabled = false;
+					locationBtn.textContent = '📍';
+				},
+				// エラー時
+				(error) => {
+					let errorMessage = '位置情報の取得に失敗しました。';
+
+					switch (error.code) {
+						case error.PERMISSION_DENIED:
+							errorMessage = '位置情報の使用が許可されていません。ブラウザの設定を確認してください。';
+							break;
+						case error.POSITION_UNAVAILABLE:
+							errorMessage = '位置情報が利用できません。';
+							break;
+						case error.TIMEOUT:
+							errorMessage = '位置情報の取得がタイムアウトしました。';
+							break;
+					}
+
+					alert(errorMessage);
+
+					// ボタンを元に戻す
+					locationBtn.disabled = false;
+					locationBtn.textContent = '📍';
+				},
+				// オプション
+				{
+					enableHighAccuracy: true,
+					timeout: 10000,
+					maximumAge: 0
+				}
+			);
+		}
 
 		// ========== パネルの折りたたみ ==========
 		function togglePanel(contentId) {
