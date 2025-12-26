@@ -25,6 +25,9 @@
 	<!-- Turf.js -->
 	<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js"></script>
 
+	<!-- PMTiles -->
+	<script src="https://unpkg.com/pmtiles@3.0.7/dist/pmtiles.js"></script>
+
 	<style>
 		* {
 			margin: 0;
@@ -422,21 +425,21 @@
 
 		// 惑星データ: 名前、軌道半径（AU）、実際の直径（km）、色、種別
 		const PLANETS = [
-			{ name: '水星', orbitAU: 0.39, diameterKm: 4879, color: '#A0A0A0', type: 'planet' },
-			{ name: '金星', orbitAU: 0.72, diameterKm: 12104, color: '#FFA500', type: 'planet' },
-			{ name: '地球', orbitAU: 1.00, diameterKm: 12742, color: '#4169E1', type: 'planet' },
-			{ name: '火星', orbitAU: 1.52, diameterKm: 6779, color: '#DC143C', type: 'planet' },
-			{ name: '木星', orbitAU: 5.20, diameterKm: 139820, color: '#DAA520', type: 'planet' },
-			{ name: '土星', orbitAU: 9.58, diameterKm: 116460, color: '#F4A460', type: 'planet' },
-			{ name: 'ハレー彗星', orbitAU: 17.8, diameterKm: 15, color: '#00CED1', type: 'comet', eccentricity: 0.967, perihelionAU: 0.586, perihelionAngleDeg: 111.3 },
-			{ name: '天王星', orbitAU: 19.22, diameterKm: 50724, color: '#40E0D0', type: 'planet' },
-			{ name: '海王星', orbitAU: 30.05, diameterKm: 49244, color: '#1E90FF', type: 'planet' },
-			{ name: '冥王星', orbitAU: 39.48, diameterKm: 2376, color: '#8B7355', type: 'dwarf' },
-			{ name: 'カイパーベルト', orbitAU: 50, diameterKm: 0, color: '#696969', type: 'region' },
-			{ name: 'オールトの雲(内縁)', orbitAU: 2000, diameterKm: 0, color: '#2F4F4F', type: 'region' },
-			{ name: 'プロキシマ・ケンタウリ', orbitAU: 268770, diameterKm: 0, color: '#FF6347', type: 'star' },
-			{ name: 'シリウス', orbitAU: 542520, diameterKm: 0, color: '#87CEEB', type: 'star' },
-			{ name: 'ベガ', orbitAU: 1584000, diameterKm: 0, color: '#E0FFFF', type: 'star' }
+			{ name: '水星', orbitAU: 0.387, diameterKm: 4879, color: '#A0A0A0', type: 'planet', eccentricity: 0.205, perihelionAU: 0.307, perihelionAngleDeg: 29.1, orbitAngleDeg: 0 },
+			{ name: '金星', orbitAU: 0.723, diameterKm: 12104, color: '#FFA500', type: 'planet', eccentricity: 0.007, perihelionAU: 0.718, perihelionAngleDeg: 55.2, orbitAngleDeg: 45 },
+			{ name: '地球', orbitAU: 1.00, diameterKm: 12742, color: '#4169E1', type: 'planet', eccentricity: 0.017, perihelionAU: 0.983, perihelionAngleDeg: 102.9, orbitAngleDeg: 90 },
+			{ name: '火星', orbitAU: 1.524, diameterKm: 6779, color: '#DC143C', type: 'planet', eccentricity: 0.093, perihelionAU: 1.381, perihelionAngleDeg: 286.5, orbitAngleDeg: 135 },
+			{ name: '木星', orbitAU: 5.203, diameterKm: 139820, color: '#DAA520', type: 'planet', eccentricity: 0.048, perihelionAU: 4.953, perihelionAngleDeg: 14.8, orbitAngleDeg: 180 },
+			{ name: '土星', orbitAU: 9.537, diameterKm: 116460, color: '#F4A460', type: 'planet', eccentricity: 0.054, perihelionAU: 9.022, perihelionAngleDeg: 92.4, orbitAngleDeg: 225 },
+			{ name: 'ハレー彗星', orbitAU: 17.8, diameterKm: 15, color: '#00CED1', type: 'comet', eccentricity: 0.967, perihelionAU: 0.586, perihelionAngleDeg: 111.3, orbitAngleDeg: 111.3 },
+			{ name: '天王星', orbitAU: 19.191, diameterKm: 50724, color: '#40E0D0', type: 'planet', eccentricity: 0.047, perihelionAU: 18.286, perihelionAngleDeg: 170.9, orbitAngleDeg: 270 },
+			{ name: '海王星', orbitAU: 30.069, diameterKm: 49244, color: '#1E90FF', type: 'planet', eccentricity: 0.009, perihelionAU: 29.798, perihelionAngleDeg: 44.9, orbitAngleDeg: 315 },
+			{ name: '冥王星', orbitAU: 39.482, diameterKm: 2376, color: '#8B7355', type: 'dwarf', eccentricity: 0.249, perihelionAU: 29.658, perihelionAngleDeg: 113.8, orbitAngleDeg: 30 },
+			{ name: 'カイパーベルト', orbitAU: 50, diameterKm: 0, color: '#696969', type: 'region', orbitAngleDeg: 60 },
+			{ name: 'オールトの雲(内縁)', orbitAU: 2000, diameterKm: 0, color: '#2F4F4F', type: 'region', orbitAngleDeg: 120 },
+			{ name: 'プロキシマ・ケンタウリ', orbitAU: 268770, diameterKm: 0, color: '#FF6347', type: 'star', orbitAngleDeg: 150 },
+			{ name: 'シリウス', orbitAU: 542520, diameterKm: 0, color: '#87CEEB', type: 'star', orbitAngleDeg: 200 },
+			{ name: 'ベガ', orbitAU: 1584000, diameterKm: 0, color: '#E0FFFF', type: 'star', orbitAngleDeg: 250 }
 		];
 
 		// 初期中心座標: みさと天文台
@@ -611,6 +614,10 @@
 
 		// ========== 初期化 ==========
 		function init() {
+			// PMTilesプロトコルを登録
+			const protocol = new pmtiles.Protocol();
+			maplibregl.addProtocol('pmtiles', protocol.tile);
+
 			// 地図の初期化
 			map = new maplibregl.Map({
 				container: 'map',
@@ -793,8 +800,8 @@
 				let orbitCircle;
 				let planetPosition;
 
-				// 彗星の場合は楕円軌道を生成
-				if (planet.type === 'comet' && planet.eccentricity) {
+				// 楕円軌道を持つ天体（惑星、準惑星、彗星）の場合は楕円軌道を生成
+				if (planet.eccentricity && planet.eccentricity > 0) {
 					// 楕円の長半径と短半径を計算
 					const semiMajorAxisKm = orbitRadiusKm;
 					const semiMinorAxisKm = semiMajorAxisKm * Math.sqrt(1 - planet.eccentricity * planet.eccentricity);
@@ -825,12 +832,18 @@
 						}
 					);
 
-					// 彗星の位置を近日点に配置
-					const perihelionDistanceKm = planet.perihelionAU * oneAUInMeters / 1000;
+					// 天体の位置を軌道上の指定角度に配置（楕円軌道上の真近点離角を考慮）
+					const orbitAngle = planet.orbitAngleDeg || 0;
+					// 楕円軌道上の距離を計算（近似）
+					const e = planet.eccentricity;
+					const a = orbitRadiusKm;
+					const theta = (orbitAngle * Math.PI / 180);
+					const r = (a * (1 - e * e)) / (1 + e * Math.cos(theta));
+
 					planetPosition = turf.destination(
 						sunCoordinates,
-						perihelionDistanceKm,
-						90 + (planet.perihelionAngleDeg || 0),
+						r,
+						90 + (planet.perihelionAngleDeg || 0) + orbitAngle,
 						{ units: 'kilometers' }
 					);
 				} else {
@@ -840,15 +853,10 @@
 						units: 'kilometers'
 					});
 
-					// 惑星の位置を計算（軌道上の右側、0度の位置）
-					planetPosition = turf.destination(sunCoordinates, orbitRadiusKm, 90, { units: 'kilometers' });
+					// 惑星の位置を軌道上の指定角度に配置
+					const orbitAngle = planet.orbitAngleDeg || 90;
+					planetPosition = turf.destination(sunCoordinates, orbitRadiusKm, orbitAngle, { units: 'kilometers' });
 				}
-
-				// 惑星の円を生成
-				const planetCircle = turf.circle(planetPosition.geometry.coordinates, planetRadiusKm, {
-					steps: 64,
-					units: 'kilometers'
-				});
 
 				const orbitSourceId = `orbit-source-${planet.name}`;
 				const orbitLayerId = `orbit-${planet.name}`;
@@ -888,44 +896,44 @@
 					const travelTime = calculateTravelTime(distanceKm);
 
 					let orbitInfo = '';
-					if (planet.type === 'comet' && planet.eccentricity) {
+					if (planet.eccentricity && planet.eccentricity > 0) {
 						const aphelionAU = planet.orbitAU * (1 + planet.eccentricity);
 						orbitInfo = `
-							<p style="margin: 5px 0;"><strong>軌道長半径:</strong> ${planet.orbitAU.toFixed(2)} AU</p>
-							<p style="margin: 5px 0;"><strong>離心率:</strong> ${planet.eccentricity.toFixed(3)}</p>
-							<p style="margin: 5px 0;"><strong>近日点距離:</strong> ${planet.perihelionAU.toFixed(2)} AU</p>
-							<p style="margin: 5px 0;"><strong>遠日点距離:</strong> ${aphelionAU.toFixed(2)} AU</p>
-						`;
+					<p style="margin: 5px 0;"><strong>軌道長半径:</strong> ${planet.orbitAU.toFixed(3)} AU</p>
+					<p style="margin: 5px 0;"><strong>離心率:</strong> ${planet.eccentricity.toFixed(3)}</p>
+					<p style="margin: 5px 0;"><strong>近日点距離:</strong> ${planet.perihelionAU.toFixed(3)} AU</p>
+					<p style="margin: 5px 0;"><strong>遠日点距離:</strong> ${aphelionAU.toFixed(3)} AU</p>
+				`;
 					} else {
 						orbitInfo = `
-							<p style="margin: 5px 0;"><strong>軌道半径:</strong> ${planet.orbitAU.toFixed(2)} AU</p>
-							<p style="margin: 5px 0;"><strong>実際の距離:</strong> ${(distanceKm / 100000000).toFixed(2)} 億km</p>
-						`;
+					<p style="margin: 5px 0;"><strong>軌道半径:</strong> ${planet.orbitAU.toFixed(2)} AU</p>
+					<p style="margin: 5px 0;"><strong>実際の距離:</strong> ${(distanceKm / 100000000).toFixed(2)} 億km</p>
+				`;
 					}
 
 					const popupContent = `
-						<div style="font-family: 'Segoe UI', sans-serif; min-width: 250px;">
-							<h3 style="margin: 0 0 10px 0; color: ${planet.color}; font-size: 16px;">
-								${planet.name}
-							</h3>
-							<div style="font-size: 13px; line-height: 1.6;">
-								${orbitInfo}
-								<hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
-								<p style="margin: 5px 0; font-weight: bold; color: #333;">🚀 到達時間:</p>
-								<p style="margin: 3px 0 3px 15px;">💡 光速: <strong>${travelTime.light}</strong></p>
-								<p style="margin: 3px 0 3px 15px;">🚄 新幹線: <strong>${travelTime.shinkansen}</strong></p>
-								<p style="margin: 3px 0 3px 15px;">🚶 徒歩: <strong>${travelTime.walking}</strong></p>
-								<hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
-								<p style="margin: 5px 0;">
-									<a href="https://www.google.com/maps?q=${coordinates.lat},${coordinates.lng}" 
-									   target="_blank" 
-									   style="color: #4CAF50; text-decoration: none;">
-										📍 Google Mapsでこの場所を見る
-									</a>
-								</p>
-							</div>
-						</div>
-					`;
+				<div style="font-family: 'Segoe UI', sans-serif; min-width: 250px;">
+					<h3 style="margin: 0 0 10px 0; color: ${planet.color}; font-size: 16px;">
+						${planet.name}
+					</h3>
+					<div style="font-size: 13px; line-height: 1.6;">
+						${orbitInfo}
+						<hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
+						<p style="margin: 5px 0; font-weight: bold; color: #333;">🚀 到達時間:</p>
+						<p style="margin: 3px 0 3px 15px;">💡 光速: <strong>${travelTime.light}</strong></p>
+						<p style="margin: 3px 0 3px 15px;">🚄 新幹線: <strong>${travelTime.shinkansen}</strong></p>
+						<p style="margin: 3px 0 3px 15px;">🚶 徒歩: <strong>${travelTime.walking}</strong></p>
+						<hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
+						<p style="margin: 5px 0;">
+							<a href="https://www.google.com/maps?q=${coordinates.lat},${coordinates.lng}" 
+							   target="_blank" 
+							   style="color: #4CAF50; text-decoration: none;">
+								📍 Google Mapsでこの場所を見る
+							</a>
+						</p>
+					</div>
+				</div>
+			`;
 
 					new maplibregl.Popup({
 						maxWidth: '350px'
@@ -947,6 +955,12 @@
 				// 惑星のソースとレイヤーを追加（塗りつぶし円として描画）
 				// 領域や恒星（直径0）は惑星本体を描画しない
 				if (planet.diameterKm > 0) {
+					// 惑星本体の円を生成
+					const planetCircle = turf.circle(planetPosition.geometry.coordinates, planetRadiusKm, {
+						steps: 64,
+						units: 'kilometers'
+					});
+
 					map.addSource(planetSourceId, {
 						type: 'geojson',
 						data: planetCircle
@@ -969,30 +983,30 @@
 						const travelTime = calculateTravelTime(distanceKm);
 
 						const popupContent = `
-							<div style="font-family: 'Segoe UI', sans-serif; min-width: 250px;">
-								<h3 style="margin: 0 0 10px 0; color: ${planet.color}; font-size: 16px;">
-									${planet.name}
-								</h3>
-								<div style="font-size: 13px; line-height: 1.6;">
-									<p style="margin: 5px 0;"><strong>実際の直径:</strong> ${planet.diameterKm.toLocaleString()} km</p>
-									<p style="margin: 5px 0;"><strong>軌道半径:</strong> ${planet.orbitAU.toFixed(2)} AU</p>
-									<p style="margin: 5px 0;"><strong>太陽からの距離:</strong> ${(distanceKm / 100000000).toFixed(2)} 億km</p>
-									<hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
-									<p style="margin: 5px 0; font-weight: bold; color: #333;">🚀 太陽からの到達時間:</p>
-									<p style="margin: 3px 0 3px 15px;">💡 光速: <strong>${travelTime.light}</strong></p>
-									<p style="margin: 3px 0 3px 15px;">🚄 新幹線: <strong>${travelTime.shinkansen}</strong></p>
-									<p style="margin: 3px 0 3px 15px;">🚶 徒歩: <strong>${travelTime.walking}</strong></p>
-									<hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
-									<p style="margin: 5px 0;">
-										<a href="https://www.google.com/maps?q=${coordinates.lat},${coordinates.lng}" 
-										   target="_blank" 
-										   style="color: #4CAF50; text-decoration: none;">
-											📍 Google Mapsでこの場所を見る
-										</a>
-									</p>
-								</div>
-							</div>
-						`;
+			<div style="font-family: 'Segoe UI', sans-serif; min-width: 250px;">
+				<h3 style="margin: 0 0 10px 0; color: ${planet.color}; font-size: 16px;">
+					${planet.name}
+				</h3>
+				<div style="font-size: 13px; line-height: 1.6;">
+					<p style="margin: 5px 0;"><strong>実際の直径:</strong> ${planet.diameterKm.toLocaleString()} km</p>
+					<p style="margin: 5px 0;"><strong>軌道半径:</strong> ${planet.orbitAU.toFixed(2)} AU</p>
+					<p style="margin: 5px 0;"><strong>太陽からの距離:</strong> ${(distanceKm / 100000000).toFixed(2)} 億km</p>
+					<hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
+					<p style="margin: 5px 0; font-weight: bold; color: #333;">🚀 太陽からの到達時間:</p>
+					<p style="margin: 3px 0 3px 15px;">💡 光速: <strong>${travelTime.light}</strong></p>
+					<p style="margin: 3px 0 3px 15px;">🚄 新幹線: <strong>${travelTime.shinkansen}</strong></p>
+					<p style="margin: 3px 0 3px 15px;">🚶 徒歩: <strong>${travelTime.walking}</strong></p>
+					<hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
+					<p style="margin: 5px 0;">
+						<a href="https://www.google.com/maps?q=${coordinates.lat},${coordinates.lng}" 
+						   target="_blank" 
+						   style="color: #4CAF50; text-decoration: none;">
+							📍 Google Mapsでこの場所を見る
+						</a>
+					</p>
+				</div>
+			</div>
+		`;
 
 						new maplibregl.Popup({
 							maxWidth: '350px'
