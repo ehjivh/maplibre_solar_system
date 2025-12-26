@@ -302,6 +302,7 @@
 					<option value="gsi-pale">地理院地図(淡色)</option>
 					<option value="gsi-blank">地理院地図(白地図)</option>
 					<option value="gsi-photo">地理院地図(衛星写真)</option>
+					<option value="gsi-vector">地理院地図(ベクトルタイル)</option>
 				</select>
 			</div>
 
@@ -366,6 +367,10 @@
 				<span>土星 (9.58 AU)</span>
 			</div>
 			<div class="legend-item">
+				<div class="legend-color" style="background-color: #00CED1;"></div>
+				<span>ハレー彗星 (17.8 AU)</span>
+			</div>
+			<div class="legend-item">
 				<div class="legend-color" style="background-color: #40E0D0;"></div>
 				<span>天王星 (19.22 AU)</span>
 			</div>
@@ -423,6 +428,7 @@
 			{ name: '火星', orbitAU: 1.52, diameterKm: 6779, color: '#DC143C', type: 'planet' },
 			{ name: '木星', orbitAU: 5.20, diameterKm: 139820, color: '#DAA520', type: 'planet' },
 			{ name: '土星', orbitAU: 9.58, diameterKm: 116460, color: '#F4A460', type: 'planet' },
+			{ name: 'ハレー彗星', orbitAU: 17.8, diameterKm: 15, color: '#00CED1', type: 'comet', eccentricity: 0.967, perihelionAU: 0.586, perihelionAngleDeg: 111.3 },
 			{ name: '天王星', orbitAU: 19.22, diameterKm: 50724, color: '#40E0D0', type: 'planet' },
 			{ name: '海王星', orbitAU: 30.05, diameterKm: 49244, color: '#1E90FF', type: 'planet' },
 			{ name: '冥王星', orbitAU: 39.48, diameterKm: 2376, color: '#8B7355', type: 'dwarf' },
@@ -549,7 +555,8 @@
 					minzoom: 0,
 					maxzoom: 18
 				}]
-			}
+			},
+			'gsi-vector': 'https://gsi-cyberjapan.github.io/optimal_bvmap/style/std.json'
 		};
 
 		// ========== 到達時間の計算 ==========
@@ -783,14 +790,59 @@
 				const planetDiameterMeters = planet.diameterKm > 0 ? (planet.diameterKm * 100000 * scale) / 100 : 0;
 				const planetRadiusKm = (planetDiameterMeters / 2) / 1000;
 
-				// 軌道円を生成
-				const orbitCircle = turf.circle(sunCoordinates, orbitRadiusKm, {
-					steps: 128,
-					units: 'kilometers'
-				});
+				let orbitCircle;
+				let planetPosition;
 
-				// 惑星の位置を計算（軌道上の右側、0度の位置）
-				const planetPosition = turf.destination(sunCoordinates, orbitRadiusKm, 90, { units: 'kilometers' });
+				// 彗星の場合は楕円軌道を生成
+				if (planet.type === 'comet' && planet.eccentricity) {
+					// 楕円の長半径と短半径を計算
+					const semiMajorAxisKm = orbitRadiusKm;
+					const semiMinorAxisKm = semiMajorAxisKm * Math.sqrt(1 - planet.eccentricity * planet.eccentricity);
+
+					// 楕円の中心（太陽は焦点の1つ）
+					const focalDistanceKm = semiMajorAxisKm * planet.eccentricity;
+
+					// 近日点角度（度からラジアンに変換）
+					const perihelionAngleRad = (planet.perihelionAngleDeg || 0) * Math.PI / 180;
+
+					// 楕円の中心座標を計算（太陽から焦点距離分移動）
+					const ellipseCenter = turf.destination(
+						sunCoordinates,
+						focalDistanceKm,
+						90 + planet.perihelionAngleDeg,
+						{ units: 'kilometers' }
+					);
+
+					// 楕円を生成（Turf.jsのellipse関数を使用）
+					orbitCircle = turf.ellipse(
+						ellipseCenter.geometry.coordinates,
+						semiMajorAxisKm,
+						semiMinorAxisKm,
+						{
+							steps: 128,
+							units: 'kilometers',
+							angle: planet.perihelionAngleDeg || 0
+						}
+					);
+
+					// 彗星の位置を近日点に配置
+					const perihelionDistanceKm = planet.perihelionAU * oneAUInMeters / 1000;
+					planetPosition = turf.destination(
+						sunCoordinates,
+						perihelionDistanceKm,
+						90 + (planet.perihelionAngleDeg || 0),
+						{ units: 'kilometers' }
+					);
+				} else {
+					// 通常の円軌道を生成
+					orbitCircle = turf.circle(sunCoordinates, orbitRadiusKm, {
+						steps: 128,
+						units: 'kilometers'
+					});
+
+					// 惑星の位置を計算（軌道上の右側、0度の位置）
+					planetPosition = turf.destination(sunCoordinates, orbitRadiusKm, 90, { units: 'kilometers' });
+				}
 
 				// 惑星の円を生成
 				const planetCircle = turf.circle(planetPosition.geometry.coordinates, planetRadiusKm, {
@@ -810,10 +862,9 @@
 				});
 
 				// 軌道の線幅と透明度を種別によって調整
-				const lineWidth = planet.type === 'region' ? 2 : (planet.type === 'star' ? 3 : 4);
-				const lineOpacity = planet.type === 'region' ? 0.3 : (planet.type === 'star' ? 0.5 : 0.6);
-				const lineDasharray = planet.type === 'region' ? [5, 5] : (planet.type === 'star' ? [10, 10] : null);
-
+				const lineWidth = planet.type === 'region' ? 2 : (planet.type === 'star' ? 3 : (planet.type === 'comet' ? 3 : 4));
+				const lineOpacity = planet.type === 'region' ? 0.3 : (planet.type === 'star' ? 0.5 : (planet.type === 'comet' ? 0.5 : 0.6));
+				const lineDasharray = planet.type === 'region' ? [5, 5] : (planet.type === 'star' ? [10, 10] : (planet.type === 'comet' ? [8, 4] : null));
 				const layerPaint = {
 					'line-color': planet.color,
 					'line-width': lineWidth,
@@ -836,14 +887,29 @@
 					const distanceKm = planet.orbitAU * AU_IN_KM;
 					const travelTime = calculateTravelTime(distanceKm);
 
+					let orbitInfo = '';
+					if (planet.type === 'comet' && planet.eccentricity) {
+						const aphelionAU = planet.orbitAU * (1 + planet.eccentricity);
+						orbitInfo = `
+							<p style="margin: 5px 0;"><strong>軌道長半径:</strong> ${planet.orbitAU.toFixed(2)} AU</p>
+							<p style="margin: 5px 0;"><strong>離心率:</strong> ${planet.eccentricity.toFixed(3)}</p>
+							<p style="margin: 5px 0;"><strong>近日点距離:</strong> ${planet.perihelionAU.toFixed(2)} AU</p>
+							<p style="margin: 5px 0;"><strong>遠日点距離:</strong> ${aphelionAU.toFixed(2)} AU</p>
+						`;
+					} else {
+						orbitInfo = `
+							<p style="margin: 5px 0;"><strong>軌道半径:</strong> ${planet.orbitAU.toFixed(2)} AU</p>
+							<p style="margin: 5px 0;"><strong>実際の距離:</strong> ${(distanceKm / 100000000).toFixed(2)} 億km</p>
+						`;
+					}
+
 					const popupContent = `
 						<div style="font-family: 'Segoe UI', sans-serif; min-width: 250px;">
 							<h3 style="margin: 0 0 10px 0; color: ${planet.color}; font-size: 16px;">
 								${planet.name}
 							</h3>
 							<div style="font-size: 13px; line-height: 1.6;">
-								<p style="margin: 5px 0;"><strong>軌道半径:</strong> ${planet.orbitAU.toFixed(2)} AU</p>
-								<p style="margin: 5px 0;"><strong>実際の距離:</strong> ${(distanceKm / 100000000).toFixed(2)} 億km</p>
+								${orbitInfo}
 								<hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
 								<p style="margin: 5px 0; font-weight: bold; color: #333;">🚀 到達時間:</p>
 								<p style="margin: 3px 0 3px 15px;">💡 光速: <strong>${travelTime.light}</strong></p>
@@ -961,8 +1027,7 @@
 				});
 
 				// ラベルサイズを天体の種類によって調整
-				const textSize = planet.type === 'star' ? 16 : (planet.type === 'region' ? 14 : (planet.type === 'dwarf' ? 18 : 20));
-
+				const textSize = planet.type === 'star' ? 16 : (planet.type === 'region' ? 14 : (planet.type === 'dwarf' ? 18 : (planet.type === 'comet' ? 16 : 20)));
 				map.addLayer({
 					id: labelLayerId,
 					type: 'symbol',
