@@ -559,7 +559,85 @@
 					maxzoom: 18
 				}]
 			},
-			'gsi-vector': 'https://gsi-cyberjapan.github.io/optimal_bvmap/style/std.json'
+			'gsi-vector': {
+				version: 8,
+				glyphs: 'https://cyberjapandata.gsi.go.jp/xyz/vectortile_gsi/fonts/{fontstack}/{range}.pbf',
+				sources: {
+					'gsi-vector': {
+						type: 'vector',
+						tiles: [
+							'https://cyberjapandata.gsi.go.jp/xyz/experimental_bvmap/{z}/{x}/{y}.pbf'
+						],
+						minzoom: 4,
+						maxzoom: 16,
+						attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>'
+					}
+				},
+				layers: [
+					{
+						id: 'background',
+						type: 'background',
+						paint: {
+							'background-color': '#f8f4f0'
+						}
+					},
+					{
+						id: 'waterarea',
+						type: 'fill',
+						source: 'gsi-vector',
+						'source-layer': 'waterarea',
+						paint: {
+							'fill-color': '#b3d9ff'
+						}
+					},
+					{
+						id: 'road',
+						type: 'line',
+						source: 'gsi-vector',
+						'source-layer': 'road',
+						paint: {
+							'line-color': '#ffffff',
+							'line-width': 1
+						}
+					},
+					{
+						id: 'railway',
+						type: 'line',
+						source: 'gsi-vector',
+						'source-layer': 'railway',
+						paint: {
+							'line-color': '#999999',
+							'line-width': 1
+						}
+					},
+					{
+						id: 'building',
+						type: 'fill',
+						source: 'gsi-vector',
+						'source-layer': 'building',
+						paint: {
+							'fill-color': '#d9d0c9',
+							'fill-opacity': 0.5
+						}
+					},
+					{
+						id: 'label',
+						type: 'symbol',
+						source: 'gsi-vector',
+						'source-layer': 'label',
+						layout: {
+							'text-field': ['get', 'name'],
+							'text-font': ['NotoSansJP-Regular'],
+							'text-size': 12
+						},
+						paint: {
+							'text-color': '#333333',
+							'text-halo-color': '#ffffff',
+							'text-halo-width': 2
+						}
+					}
+				]
+			}
 		};
 
 		// ========== 到達時間の計算 ==========
@@ -611,8 +689,6 @@
 				walking: walkingTime
 			};
 		}
-
-		// ========== 初期化 ==========
 		function init() {
 			// PMTilesプロトコルを登録
 			const protocol = new pmtiles.Protocol();
@@ -832,18 +908,24 @@
 						}
 					);
 
-					// 天体の位置を軌道上の指定角度に配置（楕円軌道上の真近点離角を考慮）
+					// 天体の位置を楕円軌道上の指定角度に配置
 					const orbitAngle = planet.orbitAngleDeg || 0;
-					// 楕円軌道上の距離を計算（近似）
+					// 楕円軌道上の角度位置を計算（近日点からの角度）
 					const e = planet.eccentricity;
 					const a = orbitRadiusKm;
-					const theta = (orbitAngle * Math.PI / 180);
+					// 近日点からの真近点離角（度）
+					const trueAnomalyDeg = orbitAngle;
+					const theta = trueAnomalyDeg * Math.PI / 180;
+					// 太陽からの距離を計算
 					const r = (a * (1 - e * e)) / (1 + e * Math.cos(theta));
+
+					// 太陽から天体への方角（近日点角度 + 真近点離角）
+					const bearing = 90 + (planet.perihelionAngleDeg || 0) + trueAnomalyDeg;
 
 					planetPosition = turf.destination(
 						sunCoordinates,
 						r,
-						90 + (planet.perihelionAngleDeg || 0) + orbitAngle,
+						bearing,
 						{ units: 'kilometers' }
 					);
 				} else {
